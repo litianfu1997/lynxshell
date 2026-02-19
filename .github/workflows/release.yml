@@ -61,6 +61,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Sync version with tag
+        shell: powershell
+        run: |
+          $ver = $env:GITHUB_REF_NAME.TrimStart('v')
+          Write-Host "Setting version to $ver"
+          npm version $ver --no-git-tag-version
+
       - name: Build & package (Windows)
         run: npm run build && npx electron-builder --win --publish never
         env:
@@ -89,6 +96,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Sync version with tag
+        run: |
+          npm version ${GITHUB_REF_NAME#v} --no-git-tag-version
 
       - name: Build & package (macOS)
         run: npm run build && npx electron-builder --mac --publish never
@@ -120,6 +131,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Sync version with tag
+        run: |
+          npm version ${GITHUB_REF_NAME#v} --no-git-tag-version
 
       - name: Build & package (Linux)
         run: npm run build && npx electron-builder --linux --publish never
