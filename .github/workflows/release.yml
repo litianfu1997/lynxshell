@@ -1,0 +1,132 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'          # 任何 v 开头的 tag 触发，如 v0.1.1
+
+# 允许写入 GitHub Release
+permissions:
+  contents: write
+
+jobs:
+  # ─────────────────────────────────────────────
+  # 1. 创建 GitHub Release（先行，后续 job 上传产物）
+  # ─────────────────────────────────────────────
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create.outputs.id }}
+      upload_url: ${{ steps.create.outputs.upload_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        id: create
+        uses: softprops/action-gh-release@v2
+        with:
+          name: OpenSSH Client ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          generate_release_notes: true
+          body: |
+            ## OpenSSH Client ${{ github.ref_name }}
+
+            ### 下载 / Downloads
+            | 平台 | 文件 | 说明 |
+            |------|------|------|
+            | Windows | `*-setup.exe` | Windows 安装包（NSIS） |
+            | macOS | `*.dmg` | macOS 磁盘映像 |
+            | Linux | `*.AppImage` | Linux 通用格式，免安装 |
+
+            > 源码包由 GitHub 自动生成，见下方 **Assets** 中的 `Source code`。
+
+  # ─────────────────────────────────────────────
+  # 2. Windows 构建
+  # ─────────────────────────────────────────────
+  build-windows:
+    name: Build Windows
+    needs: create-release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build & package (Windows)
+        run: npm run build && npx electron-builder --win --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.exe
+
+  # ─────────────────────────────────────────────
+  # 3. macOS 构建
+  # ─────────────────────────────────────────────
+  build-macos:
+    name: Build macOS
+    needs: create-release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build & package (macOS)
+        run: npm run build && npx electron-builder --mac --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload macOS artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.dmg
+            release/*.zip
+
+  # ─────────────────────────────────────────────
+  # 4. Linux 构建
+  # ─────────────────────────────────────────────
+  build-linux:
+    name: Build Linux
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build & package (Linux)
+        run: npm run build && npx electron-builder --linux --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Linux artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.AppImage
