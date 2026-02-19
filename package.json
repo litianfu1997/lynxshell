@@ -37,6 +37,7 @@
     "build": {
         "appId": "com.openssh.client",
         "productName": "OpenSSH Client",
+        "icon": "resources/icon.png",
         "directories": {
             "output": "release"
         },
@@ -47,13 +48,16 @@
             "resources"
         ],
         "win": {
-            "target": "nsis"
+            "target": "nsis",
+            "icon": "resources/icon.ico"
         },
         "mac": {
-            "target": "zip"
+            "target": "dmg",
+            "icon": "resources/icon.png"
         },
         "linux": {
-            "target": "AppImage"
+            "target": "AppImage",
+            "icon": "resources/icon.png"
         }
     }
 }
