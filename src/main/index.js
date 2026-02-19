@@ -42,7 +42,7 @@ function createWindow() {
     return mainWindow
 }
 
-import { autoUpdater } from 'electron-updater'
+
 
 import { getAutoCheckUpdate, setAutoCheckUpdate } from './config'
 
