@@ -61,42 +61,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate icon.ico from PNG
-        shell: powershell
-        run: |
-          Add-Type -AssemblyName System.Drawing
-          $pngPath = "resources\icon.png"
-          $icoPath = "resources\icon.ico"
-          $sizes = @(16,32,48,64,128,256)
-          $png = [System.Drawing.Image]::FromFile((Resolve-Path $pngPath))
-          $ms = New-Object System.IO.MemoryStream
-          $bw = New-Object System.IO.BinaryWriter($ms)
-          $bw.Write([int16]0); $bw.Write([int16]1); $bw.Write([int16]$sizes.Count)
-          $imageStreams = @()
-          foreach ($size in $sizes) {
-            $bmp = New-Object System.Drawing.Bitmap($size, $size)
-            $g = [System.Drawing.Graphics]::FromImage($bmp)
-            $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-            $g.DrawImage($png, 0, 0, $size, $size); $g.Dispose()
-            $imgMs = New-Object System.IO.MemoryStream
-            $bmp.Save($imgMs, [System.Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
-            $imageStreams += $imgMs
-          }
-          $offset = 6 + 16 * $sizes.Count
-          for ($i = 0; $i -lt $sizes.Count; $i++) {
-            $size = $sizes[$i]; $imgBytes = $imageStreams[$i].ToArray()
-            $w = if ($size -eq 256) { 0 } else { $size }; $h = $w
-            $bw.Write([byte]$w); $bw.Write([byte]$h); $bw.Write([byte]0); $bw.Write([byte]0)
-            $bw.Write([int16]1); $bw.Write([int16]32)
-            $bw.Write([int32]$imgBytes.Length); $bw.Write([int32]$offset)
-            $offset += $imgBytes.Length
-          }
-          foreach ($imgMs in $imageStreams) { $bw.Write($imgMs.ToArray()); $imgMs.Dispose() }
-          $png.Dispose(); $bw.Flush()
-          [System.IO.File]::WriteAllBytes((Resolve-Path .).Path + "\" + $icoPath, $ms.ToArray())
-          $ms.Dispose()
-          Write-Host "icon.ico created"
-
       - name: Build & package (Windows)
         run: npm run build && npx electron-builder --win --publish never
         env:
