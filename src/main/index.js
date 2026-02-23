@@ -2,7 +2,24 @@ import { app, BrowserWindow, ipcMain, shell, nativeTheme } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { autoUpdater } from 'electron-updater'
-import { createSSHConnection, closeSSHConnection, resizeSSHTerminal, getSshConnections, testSSHConnection, listRemoteDirectory } from './ssh-manager'
+import {
+    createSSHConnection,
+    closeSSHConnection,
+    resizeSSHTerminal,
+    getSshConnections,
+    testSSHConnection,
+    listRemoteDirectory,
+    uploadFile,
+    downloadFile,
+    deletePath,
+    renamePath,
+    mkdir,
+    movePath,
+    readFile,
+    writeFile,
+    getStats,
+    getDirectoryTree
+} from './ssh-manager'
 import { getHosts, saveHost, deleteHost, getHost } from './db'
 
 function createWindow() {
@@ -170,6 +187,74 @@ app.whenReady().then(() => {
     // SFTP IPC
     ipcMain.handle('sftp:ls', async (_, { sessionId, path }) => {
         return listRemoteDirectory(sessionId, path)
+    })
+
+    // SFTP upload with progress
+    ipcMain.handle('sftp:upload', async (event, { sessionId, localPath, remotePath }) => {
+        const targetWindow = BrowserWindow.fromWebContents(event.sender)
+        return uploadFile(sessionId, localPath, remotePath, (bytesTransferred, totalBytes) => {
+            if (targetWindow) {
+                targetWindow.webContents.send('sftp:upload-progress', {
+                    sessionId,
+                    bytesTransferred,
+                    totalBytes
+                })
+            }
+        })
+    })
+
+    // SFTP download with progress
+    ipcMain.handle('sftp:download', async (event, { sessionId, remotePath, localPath }) => {
+        const targetWindow = BrowserWindow.fromWebContents(event.sender)
+        return downloadFile(sessionId, remotePath, localPath, (bytesTransferred, totalBytes) => {
+            if (targetWindow) {
+                targetWindow.webContents.send('sftp:download-progress', {
+                    sessionId,
+                    bytesTransferred,
+                    totalBytes
+                })
+            }
+        })
+    })
+
+    // SFTP delete
+    ipcMain.handle('sftp:delete', async (_, { sessionId, path }) => {
+        return deletePath(sessionId, path)
+    })
+
+    // SFTP rename
+    ipcMain.handle('sftp:rename', async (_, { sessionId, oldPath, newPath }) => {
+        return renamePath(sessionId, oldPath, newPath)
+    })
+
+    // SFTP mkdir
+    ipcMain.handle('sftp:mkdir', async (_, { sessionId, path }) => {
+        return mkdir(sessionId, path)
+    })
+
+    // SFTP move
+    ipcMain.handle('sftp:move', async (_, { sessionId, oldPath, newPath }) => {
+        return movePath(sessionId, oldPath, newPath)
+    })
+
+    // SFTP read file
+    ipcMain.handle('sftp:getFile', async (_, { sessionId, path }) => {
+        return readFile(sessionId, path)
+    })
+
+    // SFTP write file
+    ipcMain.handle('sftp:putFile', async (_, { sessionId, path, content }) => {
+        return writeFile(sessionId, path, content)
+    })
+
+    // SFTP stat
+    ipcMain.handle('sftp:stat', async (_, { sessionId, path }) => {
+        return getStats(sessionId, path)
+    })
+
+    // SFTP directory tree
+    ipcMain.handle('sftp:tree', async (_, { sessionId, path, depth }) => {
+        return getDirectoryTree(sessionId, path, depth)
     })
 
     app.on('activate', function () {
