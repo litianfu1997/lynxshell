@@ -19,7 +19,7 @@
               <img :src="iconPath" alt="Logo" class="app-logo" />
             </div>
             <div class="app-info">
-              <div class="app-name">OpenSSH Client</div>
+              <div class="app-name">OpenSSH</div>
               <div class="app-version-badge">v{{ appVersion }}</div>
             </div>
           </div>

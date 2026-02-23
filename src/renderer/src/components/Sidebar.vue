@@ -108,7 +108,9 @@ const { t } = useI18n()
 
 const props = defineProps({
   hosts: { type: Array, default: () => [] },
-  activeSessionId: { type: String, default: null }
+  activeSessionId: { type: String, default: null },
+  sessions: { type: Array, default: () => [] },
+  pingStatuses: { type: Object, default: () => ({}) }
 })
 
 const emit = defineEmits(['connect', 'open-sftp', 'manage-host', 'refresh'])
@@ -149,11 +151,21 @@ function toggleGroup(name) {
 }
 
 function isActiveHost(hostId) {
-  return false // 可以根据 activeSessionId 判断
+  if (!props.activeSessionId) return false
+  const activeSession = props.sessions.find(s => s.id === props.activeSessionId)
+  return !!(activeSession && activeSession.hostId === hostId)
 }
 
 function getStatusClass(hostId) {
-  return '' // connected / connecting
+  const ping = props.pingStatuses[hostId]
+  if (ping === 'checking') return 'checking'
+  if (ping === 'error') return 'error'
+  if (ping === 'success') return 'connected'
+
+  const hostSessions = props.sessions.filter(s => s.hostId === hostId && s.status !== 'closed' && s.status !== 'error')
+  if (hostSessions.length > 0) return hostSessions.some(s => s.status === 'connected') ? 'connected' : 'connecting'
+  
+  return ''
 }
 
 function showContextMenu(event, host) {
@@ -335,6 +347,13 @@ function showContextMenu(event, host) {
 }
 .host-status-dot.connected { background: var(--color-success); box-shadow: 0 0 4px var(--color-success); }
 .host-status-dot.connecting { background: var(--color-warning); }
+.host-status-dot.checking { background: var(--color-warning); animation: status-blink 1.2s infinite ease-in-out; }
+.host-status-dot.error { background: var(--color-danger); box-shadow: 0 0 4px var(--color-danger); }
+
+@keyframes status-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
 
 .host-info {
   flex: 1;

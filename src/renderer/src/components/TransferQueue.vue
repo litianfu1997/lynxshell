@@ -8,7 +8,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['cancel'])
+const emit = defineEmits(['cancel', 'pause', 'resume'])
 
 const expanded = ref(true)
 
@@ -18,6 +18,14 @@ const toggleExpand = () => {
 
 const handleCancel = (transferId) => {
   emit('cancel', transferId)
+}
+
+const handlePause = (transferId) => {
+  emit('pause', transferId)
+}
+
+const handleResume = (transferId) => {
+  emit('resume', transferId)
 }
 
 const formatSpeed = (bytes) => {
@@ -50,17 +58,21 @@ const formatSpeed = (bytes) => {
           class="transfer-item"
         >
           <div class="transfer-info">
-            <span class="file-name">{{ transfer.fileName }}</span>
-            <span class="transfer-type">{{ transfer.type === 'upload' ? '↑' : '↓' }}</span>
-            <span class="file-size">{{ formatSpeed(transfer.speed) }}</span>
+            <span class="file-name" :title="transfer.fileName">{{ transfer.fileName }}</span>
+            <span class="transfer-type">{{ transfer.type === 'upload' ? '上传 ↑' : '下载 ↓' }}</span>
+            <span class="file-size">{{ transfer.paused ? '已暂停' : formatSpeed(transfer.speed) }}</span>
           </div>
-          <div class="transfer-progress">
-            <div class="progress-bar">
-              <div class="progress-fill" :style="{ width: transfer.progress + '%' }"></div>
+          <div class="transfer-actions">
+            <div class="transfer-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" :style="{ width: transfer.progress + '%' }"></div>
+              </div>
+              <span class="progress-text">{{ transfer.progress.toFixed(1) }}%</span>
             </div>
-            <span class="progress-text">{{ transfer.progress.toFixed(1) }}%</span>
+            <button v-if="!transfer.paused" @click="handlePause(transfer.id)" class="action-btn" title="暂停">⏸</button>
+            <button v-else @click="handleResume(transfer.id)" class="action-btn" title="继续">▶</button>
+            <button @click="handleCancel(transfer.id)" class="action-btn cancel-btn" title="取消">⏹</button>
           </div>
-          <button @click="handleCancel(transfer.id)" class="cancel-btn">取消</button>
         </div>
       </div>
     </div>
@@ -145,11 +157,17 @@ const formatSpeed = (bytes) => {
   font-size: 12px;
 }
 
+.transfer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .transfer-progress {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
+  flex: 1;
 }
 
 .progress-bar {
@@ -173,17 +191,29 @@ const formatSpeed = (bytes) => {
   text-align: right;
 }
 
-.cancel-btn {
-  padding: 4px 8px;
-  font-size: 12px;
+.action-btn {
+  padding: 4px;
   background: transparent;
   border: 1px solid var(--border-color);
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
   color: var(--text-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  width: 24px;
+  height: 24px;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background: var(--hover-bg);
 }
 
 .cancel-btn:hover {
-  background: var(--hover-bg);
+  color: #f87171;
+  border-color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
 }
 </style>

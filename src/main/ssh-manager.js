@@ -5,6 +5,9 @@ import { posix } from 'path'
 // sessionId -> { client, stream, sftp }
 const sshConnections = new Map()
 
+// transferId -> { pause, resume, cancel }
+const activeTransfers = new Map()
+
 export function getSshConnections() {
     return sshConnections
 }
@@ -45,7 +48,7 @@ export function getSFTP(sessionId) {
     return new Promise((resolve, reject) => {
         const conn = sshConnections.get(sessionId)
         if (!conn) return reject(new Error('SSH 连接不存在'))
-        
+
         if (conn.sftp) return resolve(conn.sftp)
 
         conn.client.sftp((err, sftp) => {
@@ -69,7 +72,7 @@ export async function listRemoteDirectory(sessionId, remotePath) {
             resolve(list.map(item => ({
                 name: item.filename,
                 size: item.attrs.size,
-                type: item.attrs.isDirectory ? 'directory' : 'file',
+                type: (item.attrs.mode & 0o040000) === 0o040000 ? 'directory' : 'file',
                 mode: item.attrs.mode,
                 mtime: item.attrs.mtime * 1000,
                 atime: item.attrs.atime * 1000
@@ -81,23 +84,32 @@ export async function listRemoteDirectory(sessionId, remotePath) {
 /**
  * 上传文件到远程服务器
  * @param {string} sessionId - SSH 会话 ID
+ * @param {string} transferId - 传输任务 ID
  * @param {string} localPath - 本地文件路径
  * @param {string} remotePath - 远程文件路径
- * @param {Function} onProgress - 进度回调函数 (bytesTransferred, totalBytes)
+ * @param {Function} onProgress - 进度回调函数 (bytesTransferred, totalBytes, speed)
  * @returns {Promise<void>}
  */
-export async function uploadFile(sessionId, localPath, remotePath, onProgress) {
+export async function uploadFile(sessionId, transferId, localPath, remotePath, onProgress) {
     const sftp = await getSFTP(sessionId)
     const fs = await import('fs')
 
     return new Promise((resolve, reject) => {
-        const readStream = fs.createReadStream(localPath)
-        const writeStream = sftp.createWriteStream(remotePath)
+        const readStream = fs.createReadStream(localPath, { highWaterMark: 4 * 1024 * 1024 })
+        const writeStream = sftp.createWriteStream(remotePath, { highWaterMark: 4 * 1024 * 1024 })
 
+        let isPaused = false
         const cleanup = () => {
             readStream.destroy()
             writeStream.destroy()
+            activeTransfers.delete(transferId)
         }
+
+        activeTransfers.set(transferId, {
+            pause: () => { isPaused = true; readStream.pause() },
+            resume: () => { isPaused = false; readStream.resume() },
+            cancel: () => { cleanup(); reject(new Error('Cancelled by user')) }
+        })
 
         readStream.on('error', (err) => {
             cleanup()
@@ -109,26 +121,34 @@ export async function uploadFile(sessionId, localPath, remotePath, onProgress) {
         })
 
         if (onProgress) {
-            // Use async file stats instead of sync
             fs.promises.stat(localPath).then((stats) => {
                 const totalBytes = stats.size
                 let bytesTransferred = 0
+                let lastReportTime = Date.now()
+                let lastBytes = 0
 
                 readStream.on('data', (chunk) => {
                     bytesTransferred += chunk.length
-                    try {
-                        onProgress(bytesTransferred, totalBytes)
-                    } catch (error) {
-                        // Prevent callback crashes from affecting the upload
-                        console.error('Progress callback error:', error)
+                    const now = Date.now()
+                    // Report every 300ms or at the end
+                    if (now - lastReportTime > 300 || bytesTransferred === totalBytes) {
+                        const speed = ((bytesTransferred - lastBytes) / ((now - lastReportTime) / 1000)) || 0
+                        lastBytes = bytesTransferred
+                        lastReportTime = now
+                        try {
+                            onProgress(bytesTransferred, totalBytes, speed)
+                        } catch (error) {
+                            console.error('Progress callback error:', error)
+                        }
                     }
                 })
-            }).catch(() => {
-                // If stats fail, continue without progress tracking
-            })
+            }).catch(() => { })
         }
 
-        writeStream.on('close', resolve)
+        writeStream.on('close', () => {
+            cleanup()
+            resolve()
+        })
         readStream.pipe(writeStream)
     })
 }
@@ -136,30 +156,38 @@ export async function uploadFile(sessionId, localPath, remotePath, onProgress) {
 /**
  * 从远程服务器下载文件
  * @param {string} sessionId - SSH 会话 ID
+ * @param {string} transferId - 传输任务 ID
  * @param {string} remotePath - 远程文件路径
  * @param {string} localPath - 本地文件路径
- * @param {Function} onProgress - 进度回调函数 (bytesTransferred, totalBytes)
+ * @param {Function} onProgress - 进度回调函数 (bytesTransferred, totalBytes, speed)
  * @returns {Promise<void>}
  */
-export async function downloadFile(sessionId, remotePath, localPath, onProgress) {
+export async function downloadFile(sessionId, transferId, remotePath, localPath, onProgress) {
     const sftp = await getSFTP(sessionId)
     const fs = await import('fs')
 
     return new Promise((resolve, reject) => {
-        // 获取文件大小用于进度跟踪
         sftp.stat(remotePath, (err, stats) => {
             if (err) return reject(err)
 
             const totalBytes = stats.size
             let bytesTransferred = 0
 
-            const readStream = sftp.createReadStream(remotePath)
-            const writeStream = fs.createWriteStream(localPath)
+            const readStream = sftp.createReadStream(remotePath, { highWaterMark: 4 * 1024 * 1024 })
+            const writeStream = fs.createWriteStream(localPath, { highWaterMark: 4 * 1024 * 1024 })
 
+            let isPaused = false
             const cleanup = () => {
                 readStream.destroy()
                 writeStream.destroy()
+                activeTransfers.delete(transferId)
             }
+
+            activeTransfers.set(transferId, {
+                pause: () => { isPaused = true; readStream.pause() },
+                resume: () => { isPaused = false; readStream.resume() },
+                cancel: () => { cleanup(); reject(new Error('Cancelled by user')) }
+            })
 
             readStream.on('error', (err) => {
                 cleanup()
@@ -171,21 +199,47 @@ export async function downloadFile(sessionId, remotePath, localPath, onProgress)
             })
 
             if (onProgress) {
+                let lastReportTime = Date.now()
+                let lastBytes = 0
+
                 readStream.on('data', (chunk) => {
                     bytesTransferred += chunk.length
-                    try {
-                        onProgress(bytesTransferred, totalBytes)
-                    } catch (error) {
-                        // Prevent callback crashes from affecting the download
-                        console.error('Progress callback error:', error)
+                    const now = Date.now()
+                    if (now - lastReportTime > 300 || bytesTransferred === totalBytes) {
+                        const speed = ((bytesTransferred - lastBytes) / ((now - lastReportTime) / 1000)) || 0
+                        lastBytes = bytesTransferred
+                        lastReportTime = now
+                        try {
+                            onProgress(bytesTransferred, totalBytes, speed)
+                        } catch (error) {
+                            console.error('Progress callback error:', error)
+                        }
                     }
                 })
             }
 
-            writeStream.on('close', resolve)
+            writeStream.on('close', () => {
+                cleanup()
+                resolve()
+            })
             readStream.pipe(writeStream)
         })
     })
+}
+
+export function pauseTransfer(transferId) {
+    const t = activeTransfers.get(transferId)
+    if (t && t.pause) t.pause()
+}
+
+export function resumeTransfer(transferId) {
+    const t = activeTransfers.get(transferId)
+    if (t && t.resume) t.resume()
+}
+
+export function cancelTransfer(transferId) {
+    const t = activeTransfers.get(transferId)
+    if (t && t.cancel) t.cancel()
 }
 
 /**
@@ -302,7 +356,6 @@ export async function movePath(sessionId, oldPath, newPath) {
 export async function readFile(sessionId, path) {
     const sftp = await getSFTP(sessionId)
     return new Promise((resolve, reject) => {
-        // First check file size to prevent loading huge files
         sftp.stat(path, (err, stats) => {
             if (err) return reject(err)
 
@@ -311,14 +364,40 @@ export async function readFile(sessionId, path) {
                 return reject(new Error(`File too large (${Math.round(stats.size / 1024 / 1024)}MB). Maximum size is 10MB.`))
             }
 
-            // File size is acceptable, proceed to read
             sftp.readFile(path, (err, data) => {
                 if (err) return reject(err)
-                resolve(data)
+
+                const ext = path.split('.').pop()?.toLowerCase() || ''
+                const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp', 'ico']
+                const textExts = ['txt', 'md', 'json', 'js', 'ts', 'py', 'html', 'css', 'xml',
+                    'yaml', 'yml', 'sh', 'bash', 'zsh', 'log', 'conf', 'ini', 'env',
+                    'vue', 'jsx', 'tsx', 'go', 'rs', 'java', 'c', 'cpp', 'h', 'php', 'rb',
+                    'sql', 'toml', 'gitignore', 'dockerfile']
+
+                if (imageExts.includes(ext)) {
+                    const mimeMap = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp', bmp: 'image/bmp', ico: 'image/x-icon' }
+                    resolve({
+                        isText: false,
+                        isImage: true,
+                        content: data.toString('base64'),
+                        mimeType: mimeMap[ext] || 'image/png'
+                    })
+                } else if (textExts.includes(ext)) {
+                    resolve({ isText: true, isImage: false, content: data.toString('utf8') })
+                } else {
+                    // Try UTF-8, fallback to binary notice
+                    try {
+                        const text = data.toString('utf8')
+                        resolve({ isText: true, isImage: false, content: text })
+                    } catch {
+                        resolve({ isText: false, isImage: false, content: null })
+                    }
+                }
             })
         })
     })
 }
+
 
 /**
  * 写入远程文件内容（用于在线编辑）

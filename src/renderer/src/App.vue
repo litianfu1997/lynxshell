@@ -8,6 +8,8 @@
       <Sidebar
         :hosts="hosts"
         :active-session-id="activeSessionId"
+        :sessions="sessions"
+        :ping-statuses="pingStatuses"
         @connect="handleConnect"
         @open-sftp="createSftpTab"
         @manage-host="openHostDialog"
@@ -68,7 +70,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import TitleBar from './components/TitleBar.vue'
 import Sidebar from './components/Sidebar.vue'
@@ -91,9 +93,29 @@ const activeSessionId = ref(null)
 const showHostDialog = ref(false)
 const showSettingsDialog = ref(false)
 const editingHost = ref(null)
+const pingStatuses = ref({})
+
+function checkAllHosts() {
+  console.log('Starting checkAllHosts for', hosts.value.length, 'hosts')
+  for (const host of hosts.value) {
+    pingStatuses.value[host.id] = 'checking'
+  }
+  Promise.allSettled(hosts.value.map(async host => {
+    try {
+      const plainHost = JSON.parse(JSON.stringify(host))
+      const res = await window.electronAPI.ssh.test(plainHost)
+      
+      pingStatuses.value[host.id] = res.success ? 'success' : 'error'
+    } catch (e) {
+      console.error('Test error for', host.name, e)
+      pingStatuses.value[host.id] = 'error'
+    }
+  }))
+}
 
 async function loadHosts() {
   hosts.value = await window.electronAPI.hosts.getAll()
+  checkAllHosts()
 }
 
 function openHostDialog(host) {
@@ -171,7 +193,16 @@ function renameSession({ id, name }) {
   if (session) session.hostName = name
 }
 
-onMounted(loadHosts)
+let statusInterval = null
+
+onMounted(() => {
+  loadHosts()
+  statusInterval = setInterval(checkAllHosts, 30000)
+})
+
+onUnmounted(() => {
+  if (statusInterval) clearInterval(statusInterval)
+})
 </script>
 
 <style scoped>

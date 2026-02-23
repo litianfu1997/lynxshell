@@ -31,8 +31,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // SFTP 操作
     sftp: {
         ls: (sessionId, path) => ipcRenderer.invoke('sftp:ls', { sessionId, path }),
-        upload: (sessionId, localPath, remotePath) => ipcRenderer.invoke('sftp:upload', { sessionId, localPath, remotePath }),
-        download: (sessionId, remotePath, localPath) => ipcRenderer.invoke('sftp:download', { sessionId, remotePath, localPath }),
+        upload: (sessionId, transferId, localPath, remotePath) => ipcRenderer.invoke('sftp:upload', { sessionId, transferId, localPath, remotePath }),
+        download: (sessionId, transferId, remotePath, localPath) => ipcRenderer.invoke('sftp:download', { sessionId, transferId, remotePath, localPath }),
+        pause: (transferId) => ipcRenderer.invoke('sftp:pause', { transferId }),
+        resume: (transferId) => ipcRenderer.invoke('sftp:resume', { transferId }),
+        cancel: (transferId) => ipcRenderer.invoke('sftp:cancel', { transferId }),
         delete: (sessionId, path) => ipcRenderer.invoke('sftp:delete', { sessionId, path }),
         rename: (sessionId, oldPath, newPath) => ipcRenderer.invoke('sftp:rename', { sessionId, oldPath, newPath }),
         mkdir: (sessionId, path) => ipcRenderer.invoke('sftp:mkdir', { sessionId, path }),
@@ -45,7 +48,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
         onUploadProgress: (callback) => ipcRenderer.on('sftp:upload-progress', (_, data) => callback(data)),
         onDownloadProgress: (callback) => ipcRenderer.on('sftp:download-progress', (_, data) => callback(data)),
         removeUploadProgressListener: () => ipcRenderer.removeAllListeners('sftp:upload-progress'),
-        removeDownloadProgressListener: () => ipcRenderer.removeAllListeners('sftp:download-progress')
+        removeDownloadProgressListener: () => ipcRenderer.removeAllListeners('sftp:download-progress'),
+        // VSCode edit
+        editInVscode: (sessionId, remotePath) => ipcRenderer.invoke('sftp:editInVscode', { sessionId, remotePath }),
+        stopVscodeWatch: (sessionId, remotePath) => ipcRenderer.invoke('sftp:stopVscodeWatch', { sessionId, remotePath }),
+        onVscodeSaved: (cb) => ipcRenderer.on('sftp:vscode-saved', (_, data) => cb(data))
     },
 
     // 对话框

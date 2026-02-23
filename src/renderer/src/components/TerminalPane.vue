@@ -110,6 +110,7 @@ async function copySelection() {
     await navigator.clipboard.writeText(text)
     terminal.clearSelection()
   }
+  terminal?.focus()
 }
 
 // 粘贴剪贴板内容
@@ -124,6 +125,8 @@ async function pasteFromClipboard() {
   } catch {
     // 权限被拒绝时的降级处理
     console.warn('无法读取剪贴板')
+  } finally {
+    terminal?.focus()
   }
 }
 
@@ -131,6 +134,7 @@ async function pasteFromClipboard() {
 function clearTerminal() {
   hideCtxMenu()
   terminal?.clear()
+  terminal?.focus()
 }
 
 const darkTheme = {
@@ -224,7 +228,10 @@ function createTerminal() {
     if (e.type === 'keydown' && e.ctrlKey && e.shiftKey && e.code === 'KeyV') {
       navigator.clipboard.readText().then((text) => {
         if (text) terminal.paste(text)
-      }).catch(() => {})
+        terminal.focus()
+      }).catch(() => {
+        terminal.focus()
+      })
       return false
     }
     return true

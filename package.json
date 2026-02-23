@@ -1,6 +1,6 @@
 {
     "name": "openssh-client",
-    "version": "0.1.28",
+    "version": "0.2.1",
     "description": "A lightweight and clean SSH client",
     "main": "out/main/index.js",
     "author": "openSSH",
@@ -16,8 +16,11 @@
         "build:all": "npm run build && electron-builder -mwl"
     },
     "dependencies": {
+        "@monaco-editor/loader": "^1.7.0",
         "electron-store": "^8.2.0",
         "electron-updater": "^6.8.3",
+        "lucide-vue-next": "^0.575.0",
+        "monaco-editor": "^0.55.1",
         "ssh2": "^1.16.0",
         "uuid": "^9.0.1",
         "vue-i18n": "^11.2.8"
@@ -39,7 +42,7 @@
     },
     "build": {
         "appId": "com.openssh.client",
-        "productName": "OpenSSH Client",
+        "productName": "OpenSSH",
         "icon": "resources/icon.png",
         "asar": true,
         "asarUnpack": [

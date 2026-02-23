@@ -1,6 +1,6 @@
 export default {
     app: {
-        title: 'OpenSSH 客户端',
+        title: 'OpenSSH',
     },
     sidebar: {
         search: '搜索主机...',
@@ -11,7 +11,7 @@ export default {
         edit: '编辑',
     },
     welcome: {
-        title: 'OpenSSH Client',
+        title: 'OpenSSH',
         desc: '轻量、清新、好用的 SSH 连接工具',
         add_first: '添加第一台主机',
         tips: {

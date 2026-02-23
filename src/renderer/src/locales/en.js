@@ -1,6 +1,6 @@
 export default {
     app: {
-        title: 'OpenSSH Client',
+        title: 'OpenSSH',
     },
     sidebar: {
         search: 'Search hosts...',
@@ -11,7 +11,7 @@ export default {
         edit: 'Edit',
     },
     welcome: {
-        title: 'OpenSSH Client',
+        title: 'OpenSSH',
         desc: 'Lightweight & Clean SSH Tool',
         add_first: 'Add Your First Host',
         tips: {

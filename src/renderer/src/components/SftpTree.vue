@@ -1,5 +1,6 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import FileIcon from './FileIcon.vue'
 
 const props = defineProps({
   treeData: {
@@ -35,6 +36,23 @@ const handleNodeClick = (node) => {
 const isExpanded = (path) => expandedNodes.value.has(path)
 
 const isSelected = (path) => path === props.currentPath
+
+const sortedTreeData = computed(() => {
+  return [...props.treeData].sort((a, b) => {
+    if (a.type === 'directory' && b.type !== 'directory') return -1
+    if (a.type !== 'directory' && b.type === 'directory') return 1
+    return a.name.localeCompare(b.name)
+  })
+})
+
+const getSortedChildren = (children) => {
+  if (!children) return []
+  return [...children].sort((a, b) => {
+    if (a.type === 'directory' && b.type !== 'directory') return -1
+    if (a.type !== 'directory' && b.type === 'directory') return 1
+    return a.name.localeCompare(b.name)
+  })
+}
 </script>
 
 <template>
@@ -42,7 +60,7 @@ const isSelected = (path) => path === props.currentPath
     <div v-if="loading" class="loading">加载中...</div>
     <div v-else class="tree-root">
       <div
-        v-for="node in treeData"
+        v-for="node in sortedTreeData"
         :key="node.path"
         class="tree-node"
         :class="{ 'is-selected': isSelected(node.path) }"
@@ -53,14 +71,14 @@ const isSelected = (path) => path === props.currentPath
             class="expand-icon"
             @click.stop="toggleExpand(node)"
           >
-            {{ node.children?.length ? (isExpanded(node.path) ? '▼' : '▶') : '  ' }}
+            {{ node.type === 'directory' ? (isExpanded(node.path) ? '▼' : '▶') : '  ' }}
           </span>
-          <span class="folder-icon">📁</span>
+          <FileIcon :name="node.name" :is-directory="node.type === 'directory'" :is-expanded="isExpanded(node.path)" :size="16" class="folder-icon" />
           <span class="node-name">{{ node.name }}</span>
         </div>
         <div v-if="isExpanded(node.path) && node.children?.length" class="tree-node-children">
           <div
-            v-for="child in node.children"
+            v-for="child in getSortedChildren(node.children)"
             :key="child.path"
             class="tree-node tree-node-child"
             :class="{ 'is-selected': isSelected(child.path) }"
@@ -68,7 +86,7 @@ const isSelected = (path) => path === props.currentPath
           >
             <div class="tree-node-content">
               <span class="expand-icon">  </span>
-              <span class="folder-icon">📁</span>
+              <FileIcon :name="child.name" :is-directory="child.type === 'directory'" :is-expanded="false" :size="16" class="folder-icon" />
               <span class="node-name">{{ child.name }}</span>
             </div>
           </div>
@@ -129,7 +147,8 @@ const isSelected = (path) => path === props.currentPath
 }
 
 .folder-icon {
-  font-size: 14px;
+  display: flex;
+  align-items: center;
 }
 
 .node-name {

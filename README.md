@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="./resources/icon.png" width="96" height="96" alt="OpenSSH Client">
+<img src="./resources/icon.png" width="96" height="96" alt="OpenSSH">
 
-# OpenSSH Client
+# OpenSSH
 
 **A lightweight, clean & modern SSH client built with Electron + Vue 3**
 
@@ -44,6 +44,13 @@
 - Keyboard shortcuts: `Ctrl+Shift+C` to Copy · `Ctrl+Shift+V` to Paste
 - Auto-fit terminal on window resize
 
+#### 📁 SFTP File Browser
+- **Dual-Pane Layout** — intuitive directory tree and file list view
+- **File Management** — create, delete, rename, and move files/folders
+- **Upload & Download** — easily transfer files between local and remote hosts
+- **Transfer Queue** — monitor progress, speed, and support for pause/resume/cancel
+- **Drag & Drop** — drag files directly into the pane to upload
+
 #### 🌐 Internationalization (i18n)
 - Switch between **English** and **Chinese (简体中文)** at runtime
 - Language preference is saved and restored on next launch
@@ -77,7 +84,7 @@
 #### Install
 
 ```bash
-git clone https://github.com/your-username/openssh-client.git
+git clone https://github.com/your-username/openssh.git
 cd openssh-client
 npm install
 ```
@@ -168,6 +175,13 @@ This project is licensed under the [MIT License](LICENSE).
 - 快捷键：`Ctrl+Shift+C` 复制 · `Ctrl+Shift+V` 粘贴
 - 窗口缩放时终端自动适配尺寸
 
+#### 📁 SFTP 文件浏览器
+- **双面板布局** — 直观的左侧目录树与右侧文件列表
+- **文件管理** — 支持新建、删除、重命名、移动文件或文件夹
+- **文件传输** — 轻松实现本地与远程主机间的文件上传与下载
+- **传输队列** — 实时显示传输进度、速度，并支持暂停、恢复与取消
+- **拖拽上传** — 支持直接拖拽本地文件到窗口进行上传
+
 #### 🌐 国际化 (i18n)
 - 运行时切换 **中文（简体）** 与 **English**
 - 语言偏好自动保存，下次启动恢复
@@ -201,7 +215,7 @@ This project is licensed under the [MIT License](LICENSE).
 #### 安装
 
 ```bash
-git clone https://github.com/your-username/openssh-client.git
+git clone https://github.com/your-username/openssh.git
 cd openssh-client
 npm install
 ```

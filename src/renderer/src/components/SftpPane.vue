@@ -5,6 +5,7 @@ import SftpTree from './SftpTree.vue'
 import SftpBreadcrumb from './SftpBreadcrumb.vue'
 import SftpFileList from './SftpFileList.vue'
 import SftpPreview from './SftpPreview.vue'
+import SftpEditor from './SftpEditor.vue'
 import TransferQueue from './TransferQueue.vue'
 
 // Props
@@ -26,6 +27,9 @@ const transfers = ref([])
 const isTreeLoading = ref(false)
 const isListLoading = ref(false)
 const showPreview = ref(false)
+const editingFile = ref(null)
+const toast = ref(null)  // { message, type: 'success'|'error' }
+let toastTimer = null
 
 // 计算属性
 const selectedCount = computed(() => selectedFiles.value.length)
@@ -47,7 +51,7 @@ const loadDirectory = async (path) => {
 const loadTree = async () => {
   isTreeLoading.value = true
   try {
-    const result = await window.electronAPI.sftp.tree(props.session.id, '.', 2)
+    const result = await window.electronAPI.sftp.tree(props.session.id, '.', 1)
     treeData.value = result
   } catch (error) {
     console.error('Failed to load tree:', error)
@@ -57,22 +61,23 @@ const loadTree = async () => {
 }
 
 const refresh = () => {
-  loadDirectory(currentPath.value)
-  loadTree()
+  if (props.session.status !== 'connected') {
+    loadInitialData()
+  } else {
+    loadDirectory(currentPath.value)
+    loadTree()
+  }
 }
 
 const handleFilesSelect = (files) => {
   selectedFiles.value = files
-  if (files.length === 1 && files[0].type === 'file') {
-    previewFile.value = files[0]
-    showPreview.value = true
-  }
 }
 
 const handleFileDblClick = async (file) => {
   if (file.type === 'directory') {
     const newPath = currentPath.value === '.' ? file.name : `${currentPath.value}/${file.name}`
     await loadDirectory(newPath)
+    selectedFiles.value = []
   } else {
     previewFile.value = file
     showPreview.value = true
@@ -94,25 +99,32 @@ const handleUpload = async () => {
 
   if (!result.canceled && result.filePaths.length > 0) {
     for (const localPath of result.filePaths) {
-      const fileName = localPath.split('/').pop()
+      const fileName = localPath.split(/[/\\]/).pop()
       const remotePath = currentPath.value === '.' ? `./${fileName}` : `${currentPath.value}/${fileName}`
 
-      const transferId = Date.now().toString()
+      const transferId = Date.now().toString() + Math.random().toString().slice(2)
       transfers.value.push({
         id: transferId,
         fileName,
         type: 'upload',
         progress: 0,
-        speed: 0
+        speed: 0,
+        paused: false
       })
 
       try {
-        await window.electronAPI.sftp.upload(props.session.id, localPath, remotePath)
-        const index = transfers.value.findIndex(t => t.id === transferId)
-        if (index > -1) transfers.value.splice(index, 1)
+        await window.electronAPI.sftp.upload(props.session.id, transferId, localPath, remotePath)
         refresh()
       } catch (error) {
-        console.error('Upload failed:', error)
+        if (error.message && error.message.includes('Cancelled')) {
+          showToast(`文件 ${fileName} 上传已取消`, 'info')
+        } else {
+          console.error('Upload failed:', error)
+          showToast(`文件 ${fileName} 上传失败`, 'error')
+        }
+      } finally {
+        const index = transfers.value.findIndex(t => t.id === transferId)
+        if (index > -1) transfers.value.splice(index, 1)
       }
     }
   }
@@ -127,31 +139,40 @@ const handleDownload = async () => {
     })
 
     if (!result.canceled) {
-      const transferId = Date.now().toString()
+      const transferId = Date.now().toString() + Math.random().toString().slice(2)
       transfers.value.push({
         id: transferId,
         fileName: file.name,
         type: 'download',
         progress: 0,
-        speed: 0
+        speed: 0,
+        paused: false
       })
 
       try {
         const remotePath = currentPath.value === '.' ? file.name : `${currentPath.value}/${file.name}`
-        await window.electronAPI.sftp.download(props.session.id, remotePath, result.filePath)
+        await window.electronAPI.sftp.download(props.session.id, transferId, remotePath, result.filePath)
+      } catch (error) {
+        if (error.message && error.message.includes('Cancelled')) {
+          showToast(`文件 ${file.name} 下载已取消`, 'info')
+        } else {
+          console.error('Download failed:', error)
+          showToast(`文件 ${file.name} 下载失败`, 'error')
+        }
+      } finally {
         const index = transfers.value.findIndex(t => t.id === transferId)
         if (index > -1) transfers.value.splice(index, 1)
-      } catch (error) {
-        console.error('Download failed:', error)
       }
     }
   }
 }
 
-const handleDelete = async () => {
-  if (!confirm(`确定要删除 ${selectedFiles.value.length} 个项目吗？`)) return
+const handleDelete = async (files) => {
+  const targets = files && files.length ? files : selectedFiles.value
+  if (!targets.length) return
+  if (!confirm(`确定要删除 ${targets.length} 个项目吗？`)) return
 
-  for (const file of selectedFiles.value) {
+  for (const file of targets) {
     try {
       const path = currentPath.value === '.' ? file.name : `${currentPath.value}/${file.name}`
       await window.electronAPI.sftp.delete(props.session.id, path)
@@ -181,6 +202,8 @@ const handleTogglePreview = () => {
   showPreview.value = !showPreview.value
   if (!showPreview.value) {
     previewFile.value = null
+  } else if (!previewFile.value && selectedFiles.value.length === 1) {
+    previewFile.value = selectedFiles.value[0]
   }
 }
 
@@ -190,16 +213,112 @@ const handleAddBookmark = () => {
     path: currentPath.value
   })
 }
+const handleRename = async (file) => {
+  const oldName = file.name
+  const newName = prompt('请输入新名称:', oldName)
+  if (!newName || newName === oldName) return
+  const oldPath = currentPath.value === '.' ? oldName : `${currentPath.value}/${oldName}`
+  const newPath = currentPath.value === '.' ? newName : `${currentPath.value}/${newName}`
+  try {
+    await window.electronAPI.sftp.rename(props.session.id, oldPath, newPath)
+    refresh()
+  } catch (error) {
+    console.error('Rename failed:', error)
+    alert('重命名失败: ' + error.message)
+  }
+}
+
+const handleEditFile = (file) => {
+  if (file.type === 'directory') return
+  editingFile.value = file
+}
+
+const onEditorSaved = async (file) => {
+  showToast(`✓ ${file.name} 已保存到服务器`, 'success')
+  await loadDirectory(currentPath.value) // 仅刷新当前目录结构，而不是刷新整棵树
+}
+
+const showToast = (message, type = 'success') => {
+  clearTimeout(toastTimer)
+  toast.value = { message, type }
+  toastTimer = setTimeout(() => { toast.value = null }, 3500)
+}
+
+const handlePauseTransfer = async (transferId) => {
+  const t = transfers.value.find(x => x.id === transferId)
+  if (t) {
+    t.paused = true
+    t.speed = 0
+    await window.electronAPI.sftp.pause(transferId)
+  }
+}
+
+const handleResumeTransfer = async (transferId) => {
+  const t = transfers.value.find(x => x.id === transferId)
+  if (t) {
+    t.paused = false
+    await window.electronAPI.sftp.resume(transferId)
+  }
+}
+
+const handleCancelTransfer = async (transferId) => {
+  const index = transfers.value.findIndex(t => t.id === transferId)
+  if (index > -1) {
+    await window.electronAPI.sftp.cancel(transferId)
+    // 触发 rejected callback, transfers 从那里自动移除
+  }
+}
+
+const handlePreview = (file) => {
+  previewFile.value = file
+  showPreview.value = true
+}
+
+const loadInitialData = async () => {
+  if (props.session.status !== 'connected') {
+    try {
+      props.session.status = 'connecting'
+      await window.electronAPI.ssh.connect(props.session.id, props.session.hostId)
+      props.session.status = 'connected'
+    } catch (e) {
+      console.error('SFTP connect failed:', e)
+      props.session.status = 'error'
+      return
+    }
+  }
+  loadDirectory('.')
+  loadTree()
+}
 
 // 生命周期
 onMounted(() => {
-  loadDirectory('.')
-  loadTree()
+  loadInitialData()
+  
+  window.electronAPI.sftp.onUploadProgress(({ sessionId, remotePath, bytesTransferred, totalBytes, speed }) => {
+    if (sessionId !== props.session.id) return
+    const fileName = remotePath.split('/').pop()
+    const transfer = transfers.value.find(t => t.fileName === fileName && t.type === 'upload')
+    if (transfer && totalBytes > 0 && !transfer.paused) {
+      transfer.progress = Math.round((bytesTransferred / totalBytes) * 100)
+      if (speed !== undefined) transfer.speed = speed
+    }
+  })
+
+  window.electronAPI.sftp.onDownloadProgress(({ sessionId, remotePath, bytesTransferred, totalBytes, speed }) => {
+    if (sessionId !== props.session.id) return
+    const fileName = remotePath.split('/').pop()
+    const transfer = transfers.value.find(t => t.fileName === fileName && t.type === 'download')
+    if (transfer && totalBytes > 0 && !transfer.paused) {
+      transfer.progress = Math.round((bytesTransferred / totalBytes) * 100)
+      if (speed !== undefined) transfer.speed = speed
+    }
+  })
 })
 
 onUnmounted(() => {
   window.electronAPI.sftp.removeUploadProgressListener()
   window.electronAPI.sftp.removeDownloadProgressListener()
+  window.electronAPI.ssh.disconnect(props.session.id)
 })
 </script>
 
@@ -235,18 +354,46 @@ onUnmounted(() => {
           :loading="isListLoading"
           @select="handleFilesSelect"
           @dblclick="handleFileDblClick"
+          @download="handleDownload"
+          @delete="handleDelete"
+          @rename="handleRename"
+          @preview="handlePreview"
+          @edit-file="handleEditFile"
         />
 
         <SftpPreview
           v-if="showPreview && previewFile"
           :file="previewFile"
           :session-id="session.id"
+          :current-path="currentPath"
           @close="previewFile = null; showPreview = false"
         />
       </div>
     </div>
 
-    <TransferQueue :transfers="transfers" />
+    <!-- 内置代码编辑器 (全屏覆盖 SFTP 界面) -->
+    <SftpEditor
+      v-if="editingFile"
+      :file="editingFile"
+      :session-id="session.id"
+      :current-path="currentPath"
+      @saved="onEditorSaved"
+      @close="editingFile = null"
+    />
+
+    <TransferQueue 
+      :transfers="transfers" 
+      @pause="handlePauseTransfer"
+      @resume="handleResumeTransfer"
+      @cancel="handleCancelTransfer"
+    />
+
+    <!-- Toast 通知 -->
+    <Transition name="toast-slide">
+      <div v-if="toast" class="sftp-toast" :class="`toast-${toast.type}`">
+        {{ toast.message }}
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -270,5 +417,31 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Toast */
+.sftp-toast {
+  position: absolute;
+  bottom: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 999;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+.toast-success { background: #166534; color: #bbf7d0; border: 1px solid #16a34a; }
+.toast-error   { background: #7f1d1d; color: #fecaca; border: 1px solid #b91c1c; }
+.toast-info    { background: #1e3a5f; color: #bae6fd; border: 1px solid #0284c7; }
+
+.toast-slide-enter-active, .toast-slide-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.toast-slide-enter-from, .toast-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
 }
 </style>

@@ -2,6 +2,9 @@ import { app, BrowserWindow, ipcMain, shell, nativeTheme, dialog } from 'electro
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { autoUpdater } from 'electron-updater'
+import { tmpdir } from 'os'
+import { existsSync, watch as fsWatch, mkdirSync } from 'fs'
+import { exec } from 'child_process'
 import {
     createSSHConnection,
     closeSSHConnection,
@@ -18,7 +21,10 @@ import {
     readFile,
     writeFile,
     getStats,
-    getDirectoryTree
+    getDirectoryTree,
+    pauseTransfer,
+    resumeTransfer,
+    cancelTransfer
 } from './ssh-manager'
 import { getHosts, saveHost, deleteHost, getHost } from './db'
 
@@ -190,32 +196,41 @@ app.whenReady().then(() => {
     })
 
     // SFTP upload with progress
-    ipcMain.handle('sftp:upload', async (event, { sessionId, localPath, remotePath }) => {
+    ipcMain.handle('sftp:upload', async (event, { sessionId, transferId, localPath, remotePath }) => {
         const targetWindow = BrowserWindow.fromWebContents(event.sender)
-        return uploadFile(sessionId, localPath, remotePath, (bytesTransferred, totalBytes) => {
+        return uploadFile(sessionId, transferId, localPath, remotePath, (bytesTransferred, totalBytes, speed) => {
             if (targetWindow) {
                 targetWindow.webContents.send('sftp:upload-progress', {
                     sessionId,
+                    remotePath,
                     bytesTransferred,
-                    totalBytes
+                    totalBytes,
+                    speed
                 })
             }
         })
     })
 
     // SFTP download with progress
-    ipcMain.handle('sftp:download', async (event, { sessionId, remotePath, localPath }) => {
+    ipcMain.handle('sftp:download', async (event, { sessionId, transferId, remotePath, localPath }) => {
         const targetWindow = BrowserWindow.fromWebContents(event.sender)
-        return downloadFile(sessionId, remotePath, localPath, (bytesTransferred, totalBytes) => {
+        return downloadFile(sessionId, transferId, remotePath, localPath, (bytesTransferred, totalBytes, speed) => {
             if (targetWindow) {
                 targetWindow.webContents.send('sftp:download-progress', {
                     sessionId,
+                    remotePath,
                     bytesTransferred,
-                    totalBytes
+                    totalBytes,
+                    speed
                 })
             }
         })
     })
+
+    // SFTP Transfer Controls
+    ipcMain.handle('sftp:pause', (_, { transferId }) => pauseTransfer(transferId))
+    ipcMain.handle('sftp:resume', (_, { transferId }) => resumeTransfer(transferId))
+    ipcMain.handle('sftp:cancel', (_, { transferId }) => cancelTransfer(transferId))
 
     // SFTP delete
     ipcMain.handle('sftp:delete', async (_, { sessionId, path }) => {
@@ -255,6 +270,81 @@ app.whenReady().then(() => {
     // SFTP directory tree
     ipcMain.handle('sftp:tree', async (_, { sessionId, path, depth }) => {
         return getDirectoryTree(sessionId, path, depth)
+    })
+
+    // SFTP Edit in VSCode
+    // watcher map to allow cleanup: sessionId+remotePath -> FSWatcher
+    const vscodeWatchers = new Map()
+
+    ipcMain.handle('sftp:editInVscode', async (event, { sessionId, remotePath }) => {
+        const targetWindow = BrowserWindow.fromWebContents(event.sender)
+
+        // Build a stable local temp path that mirrors the remote path
+        const safeRemote = remotePath.replace(/[/\\:*?"<>|]/g, '_')
+        const tmpDir = join(tmpdir(), 'openssh-edit')
+        if (!existsSync(tmpDir)) mkdirSync(tmpDir, { recursive: true })
+        const localPath = join(tmpDir, `${sessionId}_${safeRemote}`)
+
+        // Download the file
+        await downloadFile(sessionId, remotePath, localPath)
+
+        // Try to find VSCode executable
+        const vscodeCandidates = [
+            'code',   // in PATH (most systems)
+            '/usr/local/bin/code',
+            '/usr/bin/code',
+            'C:\\Program Files\\Microsoft VS Code\\bin\\code.cmd',
+            'C:\\Program Files (x86)\\Microsoft VS Code\\bin\\code.cmd'
+        ]
+
+        const openInCode = (candidate) => new Promise((resolve) => {
+            exec(`"${candidate}" --wait "${localPath}"`, (err) => {
+                resolve(!err)
+            })
+        })
+
+        // Try 'code' first (it's on PATH for most installations)
+        exec(`code --version`, async (err) => {
+            const codeCmd = err ? vscodeCandidates.find(c => existsSync(c)) || 'code' : 'code'
+            // Open with --wait so we know when user closes the tab
+            exec(`"${codeCmd}" "${localPath}"`)
+        })
+
+        // Watch for file changes and auto-upload
+        const watchKey = `${sessionId}::${remotePath}`
+        if (vscodeWatchers.has(watchKey)) {
+            vscodeWatchers.get(watchKey).close()
+        }
+
+        let uploadTimer = null
+        const watcher = fsWatch(localPath, () => {
+            // Debounce 300ms to avoid multiple rapid saves
+            clearTimeout(uploadTimer)
+            uploadTimer = setTimeout(async () => {
+                try {
+                    await uploadFile(sessionId, localPath, remotePath)
+                    if (targetWindow) {
+                        targetWindow.webContents.send('sftp:vscode-saved', { remotePath, success: true })
+                    }
+                } catch (e) {
+                    if (targetWindow) {
+                        targetWindow.webContents.send('sftp:vscode-saved', { remotePath, success: false, error: e.message })
+                    }
+                }
+            }, 300)
+        })
+
+        vscodeWatchers.set(watchKey, watcher)
+        return { localPath, success: true }
+    })
+
+    ipcMain.handle('sftp:stopVscodeWatch', (_, { sessionId, remotePath }) => {
+        const watchKey = `${sessionId}::${remotePath}`
+        if (vscodeWatchers.has(watchKey)) {
+            vscodeWatchers.get(watchKey).close()
+            vscodeWatchers.delete(watchKey)
+        }
+        return true
     })
 
     // 对话框
