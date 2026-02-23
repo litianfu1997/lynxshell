@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell, nativeTheme } from 'electron'
+import { app, BrowserWindow, ipcMain, shell, nativeTheme, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { autoUpdater } from 'electron-updater'
@@ -255,6 +255,19 @@ app.whenReady().then(() => {
     // SFTP directory tree
     ipcMain.handle('sftp:tree', async (_, { sessionId, path, depth }) => {
         return getDirectoryTree(sessionId, path, depth)
+    })
+
+    // 对话框
+    ipcMain.handle('dialog:open', async () => {
+        const result = await dialog.showOpenDialog(mainWindow, {
+            properties: ['openFile', 'multiSelections']
+        })
+        return result
+    })
+
+    ipcMain.handle('dialog:save', async (_, options) => {
+        const result = await dialog.showSaveDialog(mainWindow, options)
+        return result
     })
 
     app.on('activate', function () {

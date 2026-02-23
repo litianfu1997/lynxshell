@@ -30,7 +30,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // SFTP 操作
     sftp: {
-        ls: (sessionId, path) => ipcRenderer.invoke('sftp:ls', { sessionId, path })
+        ls: (sessionId, path) => ipcRenderer.invoke('sftp:ls', { sessionId, path }),
+        upload: (sessionId, localPath, remotePath) => ipcRenderer.invoke('sftp:upload', { sessionId, localPath, remotePath }),
+        download: (sessionId, remotePath, localPath) => ipcRenderer.invoke('sftp:download', { sessionId, remotePath, localPath }),
+        delete: (sessionId, path) => ipcRenderer.invoke('sftp:delete', { sessionId, path }),
+        rename: (sessionId, oldPath, newPath) => ipcRenderer.invoke('sftp:rename', { sessionId, oldPath, newPath }),
+        mkdir: (sessionId, path) => ipcRenderer.invoke('sftp:mkdir', { sessionId, path }),
+        move: (sessionId, oldPath, newPath) => ipcRenderer.invoke('sftp:move', { sessionId, oldPath, newPath }),
+        getFile: (sessionId, path) => ipcRenderer.invoke('sftp:getFile', { sessionId, path }),
+        putFile: (sessionId, path, content) => ipcRenderer.invoke('sftp:putFile', { sessionId, path, content }),
+        stat: (sessionId, path) => ipcRenderer.invoke('sftp:stat', { sessionId, path }),
+        tree: (sessionId, rootPath, depth) => ipcRenderer.invoke('sftp:tree', { sessionId, path: rootPath, depth }),
+        // 进度事件监听
+        onUploadProgress: (callback) => ipcRenderer.on('sftp:upload-progress', (_, data) => callback(data)),
+        onDownloadProgress: (callback) => ipcRenderer.on('sftp:download-progress', (_, data) => callback(data)),
+        removeUploadProgressListener: () => ipcRenderer.removeAllListeners('sftp:upload-progress'),
+        removeDownloadProgressListener: () => ipcRenderer.removeAllListeners('sftp:download-progress')
+    },
+
+    // 对话框
+    dialog: {
+        showOpenDialog: (options) => ipcRenderer.invoke('dialog:open', options),
+        showSaveDialog: (options) => ipcRenderer.invoke('dialog:save', options)
     },
 
     // 自动更新
