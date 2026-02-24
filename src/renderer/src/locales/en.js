@@ -122,6 +122,10 @@ export default {
         uploading: 'Upload ↑',
         downloading: 'Download ↓',
         preview: 'Preview',
-        edit_file: 'Edit File'
+        edit_file: 'Edit File',
+        load_error: 'Failed to load file content',
+        lines: 'lines',
+        close_preview: 'Close Preview',
+        image_preview: 'Image Preview'
     }
 }

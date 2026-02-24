@@ -1,6 +1,9 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import FileIcon from './FileIcon.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   file: { type: Object, default: null },
@@ -45,10 +48,10 @@ watch(() => props.file, async (newFile) => {
       isText.value = true
       content.value = result.content
     } else {
-      error.value = '此文件类型不支持预览'
+      error.value = t('sftp.unsupported_preview')
     }
   } catch (err) {
-    error.value = err?.message || '无法加载文件内容'
+    error.value = err?.message || t('sftp.load_error')
   } finally {
     loading.value = false
   }
@@ -66,9 +69,9 @@ const lineCount = computed(() => {
       <div class="preview-title">
         <FileIcon :name="file.name" :is-directory="false" :size="14" />
         <span class="file-name-label">{{ file.name }}</span>
-        <span v-if="isText && lineCount" class="line-count">{{ lineCount }} 行</span>
+        <span v-if="isText && lineCount" class="line-count">{{ lineCount }} {{ $t('sftp.lines') }}</span>
       </div>
-      <button @click="$emit('close')" class="close-btn" title="关闭预览">
+      <button @click="$emit('close')" class="close-btn" :title="$t('sftp.close_preview')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
         </svg>
@@ -81,7 +84,7 @@ const lineCount = computed(() => {
         <svg class="spin" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
         </svg>
-        加载中...
+        {{ $t('sftp.loading') }}
       </div>
 
       <!-- 错误 -->
@@ -97,7 +100,7 @@ const lineCount = computed(() => {
         <img
           :src="`data:${imageMime};base64,${imageBase64}`"
           class="preview-image"
-          alt="图片预览"
+          :alt="$t('sftp.image_preview')"
         />
       </div>
 
@@ -114,7 +117,7 @@ const lineCount = computed(() => {
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5">
           <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>
         </svg>
-        此文件类型不支持预览
+        {{ $t('sftp.unsupported_preview') }}
       </div>
     </div>
   </div>

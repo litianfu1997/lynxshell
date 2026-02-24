@@ -122,6 +122,10 @@ export default {
         uploading: '上传 ↑',
         downloading: '下载 ↓',
         preview: '预览',
-        edit_file: '编辑文件'
+        edit_file: '编辑文件',
+        load_error: '无法加载文件内容',
+        lines: '行',
+        close_preview: '关闭预览',
+        image_preview: '图片预览'
     }
 }

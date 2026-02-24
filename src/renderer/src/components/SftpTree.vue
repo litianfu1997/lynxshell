@@ -49,7 +49,7 @@ const sortedTreeData = computed(() => {
 
 <template>
   <div class="sftp-tree">
-    <div v-if="loading" class="loading">加载中...</div>
+    <div v-if="loading" class="loading">{{ $t('sftp.loading') }}</div>
     <div v-else class="tree-root">
       <SftpTreeNode
         v-for="node in sortedTreeData"
