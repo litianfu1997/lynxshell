@@ -101,59 +101,59 @@ onUnmounted(() => {
 <template>
   <div class="sftp-toolbar">
     <div class="toolbar-group">
-      <button class="tool-btn" @click="emit('mkdir')" title="新建文件夹">
+      <button class="tool-btn" @click="emit('mkdir')" :title="$t('sftp.new_folder')">
         <FolderPlus :size="14" />
-        <span>新建文件夹</span>
+        <span>{{ $t('sftp.new_folder') }}</span>
       </button>
-      <button class="tool-btn" @click="emit('upload')" title="上传">
+      <button class="tool-btn" @click="emit('upload')" :title="$t('sftp.upload')">
         <Upload :size="14" />
-        <span>上传</span>
+        <span>{{ $t('sftp.upload') }}</span>
       </button>
-      <button class="tool-btn" @click="emit('download')" :disabled="selectedCount === 0" title="下载所选">
+      <button class="tool-btn" @click="emit('download')" :disabled="selectedCount === 0" :title="$t('sftp.download')">
         <Download :size="14" />
-        <span>下载</span>
+        <span>{{ $t('sftp.download') }}</span>
       </button>
     </div>
 
     <div class="toolbar-divider"></div>
 
     <div class="toolbar-group">
-      <button class="tool-btn danger" @click="emit('delete')" :disabled="selectedCount === 0" title="删除所选">
+      <button class="tool-btn danger" @click="emit('delete')" :disabled="selectedCount === 0" :title="$t('sftp.delete')">
         <Trash2 :size="14" />
-        <span>删除</span>
+        <span>{{ $t('sftp.delete') }}</span>
       </button>
-      <button class="tool-btn" @click="emit('refresh')" title="刷新当前目录">
+      <button class="tool-btn" @click="emit('refresh')" :title="$t('sftp.refresh')">
         <RefreshCw :size="14" />
-        <span>刷新</span>
+        <span>{{ $t('sftp.refresh') }}</span>
       </button>
-      <button class="tool-btn" @click="emit('toggle-preview')" :disabled="selectedCount !== 1" title="预览所选文件">
+      <button class="tool-btn" @click="emit('toggle-preview')" :disabled="selectedCount !== 1" :title="$t('sftp.toggle_preview')">
         <Eye :size="14" />
-        <span>预览</span>
+        <span>{{ $t('sftp.toggle_preview') }}</span>
       </button>
     </div>
 
     <div class="toolbar-divider"></div>
 
     <div class="toolbar-group bm-group">
-      <button class="tool-btn" @click="emit('add-bookmark')" title="收藏当前路径">
+      <button class="tool-btn" @click="emit('add-bookmark')" :title="$t('sftp.add_bookmark')">
         <Star :size="14" :fill="bookmarks.some(b => b.path === currentPath) ? 'currentColor' : 'none'" />
-        <span>收藏</span>
+        <span>{{ $t('sftp.add_bookmark') }}</span>
       </button>
-      <button class="tool-btn bm-dropdown-btn" @click.stop="toggleBookmarkMenu" title="查看收藏夹">
+      <button class="tool-btn bm-dropdown-btn" @click.stop="toggleBookmarkMenu" :title="$t('sftp.bookmarks')">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </button>
 
       <!-- 收藏夹下拉菜单 -->
       <Transition name="fade">
         <div v-if="showBookmarkMenu" class="bookmark-menu" @click.stop>
-          <div class="bm-header">我的收藏</div>
+          <div class="bm-header">{{ $t('sftp.my_bookmarks') }}</div>
           <div class="bm-search-wrap">
             <Search :size="13" class="bm-search-icon" />
-            <input type="text" v-model="searchQuery" placeholder="搜索备注或路径..." class="bm-search-input" />
+            <input type="text" v-model="searchQuery" :placeholder="$t('sftp.search_bookmarks')" class="bm-search-input" />
           </div>
           
-          <div v-if="bookmarks.length === 0" class="bm-empty">暂无收藏路径</div>
-          <div v-else-if="filteredBookmarks.length === 0" class="bm-empty">未找到匹配项</div>
+          <div v-if="bookmarks.length === 0" class="bm-empty">{{ $t('sftp.no_bookmark') }}</div>
+          <div v-else-if="filteredBookmarks.length === 0" class="bm-empty">{{ $t('sftp.no_match') }}</div>
           <div v-else class="bm-list">
             <div v-for="bk in filteredBookmarks" :key="bk.path" class="bm-item" @click="handleNavigate(bk.path)">
               <div class="bm-info">
@@ -173,10 +173,10 @@ onUnmounted(() => {
                 </template>
               </div>
               <div class="bm-actions" v-if="editingBookmarkPath !== bk.path">
-                <button class="bm-act-btn" @click.stop="startEdit(bk)" title="修改备注">
+                <button class="bm-act-btn" @click.stop="startEdit(bk)" :title="$t('sftp.edit_remark')">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </button>
-                <button class="bm-act-btn bm-act-danger" @click.stop="emit('remove-bookmark', bk.path)" title="取消收藏">
+                <button class="bm-act-btn bm-act-danger" @click.stop="emit('remove-bookmark', bk.path)" :title="$t('sftp.remove_bookmark')">
                    <Trash2 :size="12" />
                 </button>
               </div>

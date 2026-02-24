@@ -106,6 +106,20 @@ export default {
         download_success: 'Download successful',
         delete_success: 'Delete successful',
         mkdir_success: 'Folder created successfully',
-        error: 'Operation failed'
+        error: 'Operation failed',
+        // Bookmarks UI
+        my_bookmarks: 'My Bookmarks',
+        search_bookmarks: 'Search bookmarks or paths...',
+        no_bookmark: 'No bookmarks yet',
+        no_match: 'No matches found',
+        edit_remark: 'Edit Remark',
+        remove_bookmark: 'Remove Bookmark',
+        // Transfer Queue UI
+        paused: 'Paused',
+        pause: 'Pause',
+        resume: 'Resume',
+        cancel: 'Cancel',
+        uploading: 'Upload ↑',
+        downloading: 'Download ↓'
     }
 }

@@ -106,6 +106,20 @@ export default {
         download_success: '下载成功',
         delete_success: '删除成功',
         mkdir_success: '文件夹创建成功',
-        error: '操作失败'
+        error: '操作失败',
+        // Bookmarks UI
+        my_bookmarks: '我的收藏',
+        search_bookmarks: '搜索备注或路径...',
+        no_bookmark: '暂无收藏路径',
+        no_match: '未找到匹配项',
+        edit_remark: '修改备注',
+        remove_bookmark: '取消收藏',
+        // Transfer Queue UI
+        paused: '已暂停',
+        pause: '暂停',
+        resume: '继续',
+        cancel: '取消',
+        uploading: '上传 ↑',
+        downloading: '下载 ↓'
     }
 }

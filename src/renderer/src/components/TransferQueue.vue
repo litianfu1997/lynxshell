@@ -44,12 +44,12 @@ const formatSpeed = (bytes) => {
   <div class="transfer-queue">
     <div class="queue-header" @click="toggleExpand">
       <span class="toggle-icon">{{ expanded ? '▼' : '▶' }}</span>
-      <span>传输队列</span>
+      <span>{{ $t('sftp.transfer_queue') }}</span>
       <span class="count">({{ transfers.length }})</span>
     </div>
     <div v-if="expanded" class="queue-content">
       <div v-if="transfers.length === 0" class="empty">
-        暂无传输任务
+        {{ $t('sftp.no_transfers') }}
       </div>
       <div v-else class="transfer-list">
         <div
@@ -59,8 +59,8 @@ const formatSpeed = (bytes) => {
         >
           <div class="transfer-info">
             <span class="file-name" :title="transfer.fileName">{{ transfer.fileName }}</span>
-            <span class="transfer-type">{{ transfer.type === 'upload' ? '上传 ↑' : '下载 ↓' }}</span>
-            <span class="file-size">{{ transfer.paused ? '已暂停' : formatSpeed(transfer.speed) }}</span>
+            <span class="transfer-type">{{ transfer.type === 'upload' ? $t('sftp.uploading') : $t('sftp.downloading') }}</span>
+            <span class="file-size">{{ transfer.paused ? $t('sftp.paused') : formatSpeed(transfer.speed) }}</span>
           </div>
           <div class="transfer-actions">
             <div class="transfer-progress">
@@ -69,9 +69,9 @@ const formatSpeed = (bytes) => {
               </div>
               <span class="progress-text">{{ transfer.progress.toFixed(1) }}%</span>
             </div>
-            <button v-if="!transfer.paused" @click="handlePause(transfer.id)" class="action-btn" title="暂停">⏸</button>
-            <button v-else @click="handleResume(transfer.id)" class="action-btn" title="继续">▶</button>
-            <button @click="handleCancel(transfer.id)" class="action-btn cancel-btn" title="取消">⏹</button>
+            <button v-if="!transfer.paused" @click="handlePause(transfer.id)" class="action-btn" :title="$t('sftp.pause')">⏸</button>
+            <button v-else @click="handleResume(transfer.id)" class="action-btn" :title="$t('sftp.resume')">▶</button>
+            <button @click="handleCancel(transfer.id)" class="action-btn cancel-btn" :title="$t('sftp.cancel')">⏹</button>
           </div>
         </div>
       </div>
