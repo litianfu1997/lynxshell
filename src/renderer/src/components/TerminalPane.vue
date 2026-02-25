@@ -27,6 +27,24 @@
     <!-- xterm 终端容器 -->
     <div ref="termRef" class="xterm-container" @contextmenu.prevent="showCtxMenu" />
 
+    <!-- 原地幽灵文本补全（fixed 定位，不被 canvas 遮挡） -->
+    <div v-if="isPopupOpen && ghostText" class="ghost-text" :style="ghostStyle">{{ ghostText }}</div>
+
+    <!-- 联想提示下拉列表（fixed 定位，不被 canvas 遮挡） -->
+    <Transition name="fade">
+      <div v-if="isPopupOpen && suggestions.length > 0" class="autocomplete-popup" :style="popupStyle">
+        <div
+          v-for="(item, index) in suggestions"
+          :key="index"
+          class="ac-item"
+          :class="{ selected: index === selectedIndex }"
+          @mousedown.prevent="clickSuggestion(index)"
+        >
+          <span class="ac-typed">{{ localBuffer }}</span><span class="ac-rest">{{ item.slice(localBuffer.length) }}</span>
+        </div>
+      </div>
+    </Transition>
+
     <!-- 右键菜单 -->
     <Transition name="ctx-fade">
       <div
@@ -65,8 +83,9 @@
 </template>
 
 <script setup>
-import { sshAPI } from '@/api/tauri-bridge'
-import { ref, onMounted, watch, onUnmounted } from 'vue'
+import { sshAPI, sftpAPI } from '@/api/tauri-bridge'
+import { ref, onMounted, watch, onUnmounted, computed } from 'vue'
+import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
@@ -108,7 +127,7 @@ async function copySelection() {
   hideCtxMenu()
   const text = terminal?.getSelection()
   if (text) {
-    await navigator.clipboard.writeText(text)
+    await writeText(text)
     terminal.clearSelection()
   }
   terminal?.focus()
@@ -118,14 +137,13 @@ async function copySelection() {
 async function pasteFromClipboard() {
   hideCtxMenu()
   try {
-    const text = await navigator.clipboard.readText()
+    const text = await readText()
     if (text && props.session.status === 'connected') {
       // 使用 terminal.paste 保留换行符等特殊字符
       terminal.paste(text)
     }
   } catch {
-    // 权限被拒绝时的降级处理
-    console.warn('无法读取剪贴板')
+    console.warn('无法通过 Tauri 插件读取剪贴板')
   } finally {
     terminal?.focus()
   }
@@ -213,44 +231,83 @@ function createTerminal() {
   terminal.open(termRef.value)
   fitAddon.fit()
 
-  // ===== 复制粘贴快捷键拦截 =====
-  // 返回 false 表示阻止事件传给终端，返回 true 表示正常传递
+  // ===== 自定义快捷键及补全拦截 =====
   terminal.attachCustomKeyEventHandler((e) => {
-    // Ctrl+Shift+C：复制选中内容
     if (e.type === 'keydown' && e.ctrlKey && e.shiftKey && e.code === 'KeyC') {
       const selection = terminal.getSelection()
       if (selection) {
-        navigator.clipboard.writeText(selection)
+        writeText(selection)
         terminal.clearSelection()
       }
       return false
     }
-    // Ctrl+Shift+V：粘贴
     if (e.type === 'keydown' && e.ctrlKey && e.shiftKey && e.code === 'KeyV') {
-      navigator.clipboard.readText().then((text) => {
+      readText().then((text) => {
         if (text) terminal.paste(text)
         terminal.focus()
-      }).catch(() => {
-        terminal.focus()
-      })
+      }).catch(() => { terminal.focus() })
       return false
+    }
+
+    if (e.type === 'keydown' && isPopupOpen.value) {
+      if (e.key === 'ArrowDown') {
+        selectedIndex.value = (selectedIndex.value + 1) % suggestions.value.length;
+        e.preventDefault(); return false;
+      }
+      if (e.key === 'ArrowUp') {
+        selectedIndex.value = (selectedIndex.value - 1 + suggestions.value.length) % suggestions.value.length;
+        e.preventDefault(); return false;
+      }
+      if (e.key === 'Tab' || e.key === 'ArrowRight') {
+        applySuggestion();
+        e.preventDefault(); return false;
+      }
+      if (e.key === 'Escape') {
+        isPopupOpen.value = false;
+        e.preventDefault(); return false;
+      }
     }
     return true
   })
 
-  // 点击任意位置隐藏右键菜单并保证终端重新获取焦点
   clickHandler = () => {
     hideCtxMenu()
-    // 如果没有选中文本，则保证终端获取焦点
-    if (!terminal.hasSelection()) {
-      terminal.focus()
-    }
+    isPopupOpen.value = false
+    if (!terminal.hasSelection()) terminal.focus()
   }
   termRef.value?.addEventListener('click', clickHandler)
 
-  // 用户输入转发给主进程
+  // 用户输入拦截与补全计算
   terminal.onData((data) => {
+    if (data === '\t') {
+      // Tab 键：弹窗未打开时让 shell 原生处理
+      if (!isPopupOpen.value) {
+        isPopupOpen.value = false
+        suggestions.value = []
+        sshAPI.input(props.session.id, data)
+      }
+      return
+    } else if (data.startsWith('\x1B')) {
+      localBuffer.value = ''
+      isPopupOpen.value = false
+    } else if (data === '\r' || data === '\n') {
+      // 仅清空本地缓冲区，不保存本地历史（只使用服务器历史）
+      localBuffer.value = ''
+    } else if (data === '\x7F' || data === '\b') {
+      localBuffer.value = localBuffer.value.slice(0, -1)
+    } else if (data === '\x03' || data === '\x04') {
+      localBuffer.value = ''
+      isPopupOpen.value = false
+    } else if (data.length === 1 && data >= ' ' && data <= '~') {
+      localBuffer.value += data
+    }
+
+    updateSuggestions()
     sshAPI.input(props.session.id, data)
+  })
+
+  terminal.onCursorMove(() => {
+    if (isPopupOpen.value) updatePopupPosition()
   })
 
   // 捕获终端标题，尝试提取当前路径 (Linux bash 默认标题: user@host: ~/path)
@@ -318,10 +375,104 @@ async function connect() {
     })
     const { cols, rows } = terminal
     sshAPI.resize(props.session.id, cols, rows)
+
+    // 连接成功后，异步加载服务器历史命令
+    loadServerHistory()
   } catch (err) {
     props.session.status = 'error'
     props.session.errorMessage = err
   }
+}
+
+// 通过 SFTP 读取服务器的 shell 历史文件（每次连接都读最新的）
+async function loadServerHistory() {
+  const hostId = props.session.hostId
+  const sftpSessionId = `hist_${props.session.id}`
+
+  try {
+    await sftpAPI.connect(sftpSessionId, hostId)
+  } catch(e) {
+    console.warn('[autocomplete] SFTP connect failed:', e)
+    return
+  }
+
+  const historyFiles = [
+    '~/.bash_history',
+    '~/.zsh_history',
+    '~/.local/share/fish/fish_history'
+  ]
+
+  let allCmds = []
+
+  // 先解析 home 目录
+  let home = '/root'
+  try {
+    home = await sftpAPI.realpath(sftpSessionId, '.')
+  } catch(e) {}
+
+  for (const filePath of historyFiles) {
+    try {
+      const realPath = filePath.replace('~', home)
+      const content = await sftpAPI.readTextFile(sftpSessionId, realPath)
+      if (content && content.length > 0) {
+        allCmds.push(...parseHistoryFile(content, filePath))
+      }
+    } catch(e) {
+      // 文件不存在，静默跳过
+    }
+  }
+
+  if (allCmds.length > 0) {
+    mergeServerHistory(allCmds)
+    console.log('[autocomplete] Loaded', cmdHistory.value.length, 'server history items')
+  }
+}
+
+// 解析不同 shell 的历史文件格式
+function parseHistoryFile(content, filePath) {
+  const lines = content.split('\n')
+  const cmds = []
+
+  if (filePath.includes('zsh_history')) {
+    // zsh 格式: : timestamp:0;command
+    for (const line of lines) {
+      const match = line.match(/^:\s*\d+:\d+;(.+)/)
+      if (match) {
+        const cmd = match[1].trim()
+        if (cmd && cmd.length > 1) cmds.push(cmd)
+      } else {
+        const trimmed = line.trim()
+        if (trimmed && trimmed.length > 1 && !trimmed.startsWith('#')) cmds.push(trimmed)
+      }
+    }
+  } else if (filePath.includes('fish_history')) {
+    // fish 格式: - cmd: command
+    for (const line of lines) {
+      const match = line.match(/^- cmd:\s*(.+)/)
+      if (match) {
+        const cmd = match[1].trim()
+        if (cmd && cmd.length > 1) cmds.push(cmd)
+      }
+    }
+  } else {
+    // bash 格式: 每行一个命令
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (trimmed && trimmed.length > 1 && !trimmed.startsWith('#')) {
+        cmds.push(trimmed)
+      }
+    }
+  }
+
+  return cmds
+}
+
+// 直接用服务器历史替换本地历史
+function mergeServerHistory(serverCmds) {
+  // 去重并只保留最后 500 条（最新在末尾，反转后最新的在前）
+  const unique = [...new Set(serverCmds.map(c => c.trim()).filter(c => c.length > 1))]
+  cmdHistory.value = unique.slice(-500).reverse() // 最新命令排在前面
+  console.log('[autocomplete] Server history loaded:', cmdHistory.value.length, 'items')
 }
 
 async function retry() {
@@ -343,6 +494,117 @@ onMounted(async () => {
   terminal?.focus()
   await connect()
 })
+
+// ===== 终端内原位联想补全功能 =====
+const localBuffer = ref('')
+const isPopupOpen = ref(false)
+const suggestions = ref([])
+const selectedIndex = ref(0)
+const cmdHistory = ref([])    // 仅存储服务器历史
+const ghostStyle = ref({})
+const popupStyle = ref({})
+
+// 从 xterm 当前行缓冲区读取命令（去除 Prompt）
+function readCurrentLineCmd() {
+  if (!terminal) return ''
+  const line = terminal.buffer.active.getLine(terminal.buffer.active.cursorY)
+  if (!line) return ''
+  const text = line.translateToString(true)
+  // 去除 ANSI 转义码
+  const raw = text.replace(/\x1B\[[0-9;]*[A-Za-z]/g, '')
+  // 常见 prompt 结尾模式：$ 、# 、% 、> 
+  const promptMatch = raw.match(/(?:^|[\s\S]*)[\$#%>]\s(.+)$/)
+  if (promptMatch) return promptMatch[1].trim()
+  return raw.trim()
+}
+
+const ghostText = computed(() => {
+  if (suggestions.value.length === 0) return '';
+  const suggestion = suggestions.value[selectedIndex.value];
+  if (suggestion.toLowerCase().startsWith(localBuffer.value.toLowerCase())) {
+    return suggestion.slice(localBuffer.value.length);
+  }
+  return '';
+})
+
+// 仅展示用，不再保存本地历史
+function saveHistory(_cmd) { /* no-op: 只使用服务器历史 */ }
+
+function updateSuggestions() {
+  if (!localBuffer.value.trim()) {
+    isPopupOpen.value = false;
+    suggestions.value = [];
+    return;
+  }
+  
+  const query = localBuffer.value.toLowerCase();
+  const matches = cmdHistory.value.filter(h => h.toLowerCase().startsWith(query) && h.length > localBuffer.value.length);
+  const allMatches = Array.from(new Set([...matches]));
+  
+  if (allMatches.length > 0) {
+    suggestions.value = allMatches.slice(0, 8); // max 8 items
+    selectedIndex.value = 0;
+    isPopupOpen.value = true;
+    requestAnimationFrame(updatePopupPosition);
+  } else {
+    isPopupOpen.value = false;
+    suggestions.value = [];
+  }
+}
+
+function updatePopupPosition() {
+  if (!terminal || !termRef.value) return
+  const cursorX = terminal.buffer.active.cursorX
+  const cursorY = terminal.buffer.active.cursorY
+
+  const xtermScreen = termRef.value.querySelector('.xterm-screen')
+  if (!xtermScreen) return
+
+  // 用 fixed 定位：直接用 getBoundingClientRect 获得屏幕绝对坐标
+  const rect = xtermScreen.getBoundingClientRect()
+
+  const cellW = rect.width / terminal.cols
+  const cellH = rect.height / terminal.rows
+
+  const left = rect.left + cursorX * cellW
+  const top  = rect.top  + cursorY * cellH
+
+  ghostStyle.value = {
+    position: 'fixed',
+    left: left + 'px',
+    top: top + 'px',
+    height: cellH + 'px',
+    lineHeight: cellH + 'px'
+  }
+
+  // 弹窗默认显示在光标下方，若超出屏幕底部则翻转到上方
+  const popupH = Math.min(suggestions.value.length, 8) * 30 + 12
+  const flipUp = top + cellH + popupH > window.innerHeight
+  popupStyle.value = {
+    position: 'fixed',
+    left: left + 'px',
+    top: flipUp ? (top - popupH - 4) + 'px' : (top + cellH + 4) + 'px'
+  }
+}
+
+function applySuggestion() {
+  const selected = suggestions.value[selectedIndex.value]
+  if (selected) {
+    const remainder = selected.slice(localBuffer.value.length)
+    if (remainder.length > 0) {
+      sshAPI.input(props.session.id, remainder)
+      localBuffer.value += remainder
+    }
+    isPopupOpen.value = false
+    suggestions.value = []
+  }
+}
+
+function clickSuggestion(index) {
+  selectedIndex.value = index;
+  applySuggestion();
+  terminal?.focus();
+}
 
 onUnmounted(() => {
   resizeObserver?.disconnect()
@@ -376,6 +638,7 @@ onUnmounted(() => {
 .xterm-container {
   flex: 1;
   overflow: hidden;
+  position: relative;
   /* 上下左留一点边距，右侧 0 确保滚动条紧贴屏幕边缘 */
   padding: 4px 0 4px 4px;
 }
@@ -503,5 +766,69 @@ onUnmounted(() => {
 .ctx-fade-enter-from, .ctx-fade-leave-to {
   opacity: 0;
   transform: scale(0.95);
+}
+
+/* ===== 原位联想补全与弹窗（fixed 不被 canvas 遮挡） ===== */
+.ghost-text {
+  pointer-events: none;
+  color: var(--color-text-3);
+  opacity: 0.55;
+  white-space: pre;
+  z-index: 9990;
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+.autocomplete-popup {
+  z-index: 9991;
+  background: var(--color-bg-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  padding: 4px;
+  min-width: 200px;
+  max-width: 500px;
+}
+
+.ac-item {
+  padding: 5px 10px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  cursor: pointer;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+}
+
+.ac-typed {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.ac-rest {
+  color: var(--color-text-3);
+}
+
+.ac-item.selected {
+  background: var(--color-primary-light);
+}
+
+.ac-item.selected .ac-typed,
+.ac-item.selected .ac-rest {
+  color: var(--color-primary);
+}
+
+.ac-item:hover {
+  background: var(--color-bg-4);
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.12s;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
 }
 </style>

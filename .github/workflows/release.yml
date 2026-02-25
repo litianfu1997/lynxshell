@@ -21,6 +21,53 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          echo "Extracting changelog for $VERSION"
+
+          # 从 CHANGELOG.md 提取当前版本的内容（两个 ## 之间的部分）
+          python3 - <<'EOF'
+          import re, os, sys
+
+          version = os.environ.get("GITHUB_REF_NAME", "")
+          with open("CHANGELOG.md", "r", encoding="utf-8") as f:
+              content = f.read()
+
+          # 匹配 ## [vX.Y.Z] 开头的段落，提取到下一个 ## 之前
+          pattern = re.compile(
+              r'^## \[' + re.escape(version) + r'\].*?\n(.*?)(?=^## \[|\Z)',
+              re.MULTILINE | re.DOTALL
+          )
+          m = pattern.search(content)
+          notes = m.group(1).strip() if m else "_No changelog entry found for this version._"
+
+          # 拼接下载表格
+          body = f"""## OpenSSH {version}
+
+          {notes}
+
+          ---
+
+          ### 下载 / Downloads
+          | 平台 | 文件 | 说明 |
+          |------|------|------|
+          | Windows x64 | `*.msi` / `*-setup.exe` | Windows 安装包 |
+          | macOS (Apple Silicon) | `*_aarch64.dmg` | macOS ARM64 磁盘映像 |
+          | macOS (Intel) | `*_x64.dmg` | macOS x64 磁盘映像 |
+          | Linux x64 | `.AppImage` / `.deb` | Linux 可执行文件与安装包 |
+
+          > 源码包由 GitHub 自动生成，见下方 **Assets** 中的 `Source code`。
+          """
+
+          # 写入 GitHub Output（多行）
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write("notes<<NOTES_EOF\n")
+              f.write(body + "\n")
+              f.write("NOTES_EOF\n")
+          EOF
+
       - name: Create GitHub Release
         id: create
         uses: softprops/action-gh-release@v2
@@ -28,18 +75,7 @@ jobs:
           name: OpenSSH ${{ github.ref_name }}
           draft: false
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
-          generate_release_notes: true
-          body: |
-            ## OpenSSH ${{ github.ref_name }}
-
-            ### 下载 / Downloads
-            | 平台 | 文件 | 说明 |
-            |------|------|------|
-            | Windows x64 | `*.msi` / `*-setup.exe` | Windows 安装包 |
-            | macOS (Apple Silicon) | `*_aarch64.dmg` | macOS ARM64 磁盘映像 |
-            | macOS (Intel) | `*_x64.dmg` | macOS x64 磁盘映像 |
-
-            > 源码包由 GitHub 自动生成，见下方 **Assets** 中的 `Source code`。
+          body: ${{ steps.changelog.outputs.notes }}
 
   # ─────────────────────────────────────────────
   # 2. Windows 构建 (x64)
@@ -215,3 +251,63 @@ jobs:
             src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
             src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app.tar.gz
             src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
+
+  # ─────────────────────────────────────────────
+  # 5. Linux 构建 (x64)
+  # ─────────────────────────────────────────────
+  build-linux:
+    name: Build Linux (x64)
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Sync Tauri version with tag
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          echo "Setting version to $VER"
+
+          node -e "
+            const fs = require('fs');
+            const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
+            conf.version = '$VER';
+            fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2));
+          "
+
+          npm version $VER --no-git-tag-version --allow-same-version
+
+      - name: Build Tauri App (Linux)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tauriScript: npx tauri
+
+      - name: Upload Linux artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/deb/*.deb

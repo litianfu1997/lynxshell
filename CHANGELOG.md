@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.4] - 2026-02-25
+
+### ✨ Features
+
+- **Shell History Autocomplete**: The terminal now shows real-time command suggestions powered by the server's actual shell history (`~/.bash_history` / `~/.zsh_history` / fish history).
+  - Suggestions appear as an **in-terminal floating popup** directly at the cursor position, without any separate input bar.
+  - **Ghost text** previews the top suggestion inline.
+  - History is fetched via a dedicated SFTP connection immediately after SSH login.
+  - Supports **bash**, **zsh**, and **fish** history files.
+  - `Tab` / `→` to accept · `↑ / ↓` to navigate · `Esc` to dismiss.
+- **Improved CI/CD**: Added **Linux (x64)** build support to GitHub Actions. Now providing `.AppImage` and `.deb` packages in releases.
+
 ## [v0.3.2] - 2026-02-25
 
 ### 🔧 CI Fixes

@@ -42,6 +42,7 @@
 - Powered by `xterm.js` with full True Color support
 - **High Performance** — Backed by Rust `russh` crate for low-latency terminal experience
 - **Day / Night Mode** — switch between Light and Dark themes with one click
+- **Shell History Autocomplete** — real-time command suggestions loaded from the server's `~/.bash_history` (bash/zsh/fish supported), displayed as a floating in-terminal popup with ghost text preview; `Tab`/`→` to accept · `↑/↓` to navigate · `Esc` to dismiss
 - Right-click context menu: Copy, Paste, Clear
 - Keyboard shortcuts: `Ctrl+Shift+C` to Copy · `Ctrl+Shift+V` to Paste
 - Auto-fit terminal on window resize
@@ -163,6 +164,7 @@ This project is licensed under the [MIT License](LICENSE).
 - 基于 `xterm.js`，完整支持 True Color
 - **高性能** — 由 Rust `russh` 驱动，极速响应，更低内存占用
 - **日夜模式** — 一键切换亮色与暗色主题，终端配色同步切换
+- **Shell 历史命令补全** — 连接后自动通过 SFTP 读取服务器 `~/.bash_history`（兼容 bash/zsh/fish），在终端光标处弹出浮动候选列表，同时显示幽灵预览文字；`Tab`/`→` 接受补全 · `↑/↓` 切换候选 · `Esc` 关闭
 - 右键菜单：复制、粘贴、清屏
 - 快捷键：`Ctrl+Shift+C` 复制 · `Ctrl+Shift+V` 粘贴
 - 窗口缩放时终端自动适配尺寸

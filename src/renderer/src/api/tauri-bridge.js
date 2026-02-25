@@ -68,6 +68,7 @@ export const sftpAPI = {
     mkdir: (sessionId, path) => invoke('sftp_mkdir', { sessionId, path }),
     getFile: (sessionId, path) => invoke('sftp_get_file', { sessionId, path }),
     putFile: (sessionId, path, content) => invoke('sftp_put_file', { sessionId, path, content }),
+    readTextFile: (sessionId, path) => invoke('sftp_read_text_file', { sessionId, path }),
     onUploadProgress: (cb) => listen('sftp:upload-progress', (e) => cb(e.payload)),
     onDownloadProgress: (cb) => listen('sftp:download-progress', (e) => cb(e.payload)),
     // removeXxxListener: Tauri's listen() returns unlisten fn, manage in component

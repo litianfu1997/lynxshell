@@ -579,3 +579,26 @@ pub async fn sftp_cancel(
     }
     Ok(())
 }
+
+/// 读取文本文件（专用于 shell 历史记录，跳过 mime 类型检测）
+#[tauri::command]
+pub async fn sftp_read_text_file(
+    app: AppHandle,
+    host_map: tauri::State<'_, SessionHostMap>,
+    mgr: tauri::State<'_, SftpManager>,
+    session_id: String,
+    path: String,
+) -> Result<String, String> {
+    let (sftp_arc, _) = sftp_get_host(&app, &host_map, &mgr, &session_id).await?;
+    let sftp = sftp_arc.lock().await;
+    let data = sftp.read(&path).await.map_err(|e| e.to_string())?;
+
+    // 最多读取 2MB
+    if data.len() > 2 * 1024 * 1024 {
+        // 大文件只取最后 2MB（历史记录最新的在文件末尾）
+        let tail = &data[data.len() - 2 * 1024 * 1024..];
+        return Ok(String::from_utf8_lossy(tail).to_string());
+    }
+
+    Ok(String::from_utf8_lossy(&data).to_string())
+}
