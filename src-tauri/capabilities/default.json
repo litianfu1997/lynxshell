@@ -16,6 +16,13 @@
     "core:window:allow-is-maximized",
     "dialog:default",
     "clipboard-manager:allow-read-text",
-    "clipboard-manager:allow-write-text"
+    "clipboard-manager:allow-write-text",
+    "os:default",
+    "shell:allow-open",
+    "fs:allow-write-file",
+    "fs:allow-create-dir",
+    "fs:allow-exists",
+    "fs:allow-read-file",
+    "updater:default"
   ]
 }

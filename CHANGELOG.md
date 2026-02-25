@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.6] - 2026-02-25
+
+### 🚀 Rebranding & Fixes
+- **Official Rebranding**: Renamed application from "OpenSSH" to **LynxShell**.
+- **Enhanced Updater**:
+  - Implemented **native download progress bar** within the settings dialog.
+  - Added automatic installation package execution after download completion.
+  - Updated update detection to the new GitHub repository path (`lynxshell`).
+  - Integrated `fs` and `shell` plugins for a seamless upgrade experience.
+
 ## [v0.3.5] - 2026-02-25
 
 ### ✨ Terminal History Enhancements

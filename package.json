@@ -1,9 +1,9 @@
 {
-    "name": "openssh-client",
-    "version": "0.3.5",
+    "name": "lynxshell",
+    "version": "0.3.6",
     "description": "A lightweight, clean & modern SSH client built with Tauri v2 + Vue 3 + Rust",
     "main": "out/main/index.js",
-    "author": "openSSH",
+    "author": "LynxShell",
     "license": "MIT",
     "scripts": {
         "dev": "tauri dev",
@@ -15,11 +15,13 @@
     "dependencies": {
         "@monaco-editor/loader": "^1.7.0",
         "@tauri-apps/api": "^2.10.1",
+        "@tauri-apps/plugin-clipboard-manager": "^2.2.0",
         "@tauri-apps/plugin-dialog": "^2.6.0",
+        "@tauri-apps/plugin-fs": "^2.4.5",
         "@tauri-apps/plugin-os": "^2.3.2",
+        "@tauri-apps/plugin-shell": "^2.3.5",
         "@tauri-apps/plugin-store": "^2.4.2",
         "@tauri-apps/plugin-updater": "^2.10.0",
-        "@tauri-apps/plugin-clipboard-manager": "^2.2.0",
         "lucide-vue-next": "^0.575.0",
         "monaco-editor": "^0.55.1",
         "uuid": "^9.0.1",

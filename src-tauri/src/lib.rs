@@ -13,8 +13,9 @@ pub fn run() {
     .plugin(tauri_plugin_store::Builder::default().build())
     .plugin(tauri_plugin_os::init())
     .plugin(tauri_plugin_clipboard_manager::init())
-    // TODO: 添加 updater 插件时需要在 tauri.conf.json 中配置 plugins.updater
-    // .plugin(tauri_plugin_updater::Builder::new().build())
+    .plugin(tauri_plugin_fs::init())
+    .plugin(tauri_plugin_shell::init())
+    .plugin(tauri_plugin_updater::Builder::new().build())
     .invoke_handler(tauri::generate_handler![
         db::get_hosts,
         db::save_host,

@@ -8,7 +8,7 @@
           <path d="M4 17l5-5-5-5M11 19h9" stroke="#4f8ef7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
-      <span class="app-name">OpenSSH</span>
+      <span class="app-name">LynxShell</span>
     </div>
 
     <!-- 拖拽区域 -->
