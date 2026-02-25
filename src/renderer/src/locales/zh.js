@@ -69,6 +69,8 @@ export default {
         title: '关于 & 设置',
         auto_update: '自动获取更新',
         auto_update_desc: '有新版本时自动下载并通知我',
+        terminal_history: '终端输入提示',
+        terminal_history_desc: '输入命令时显示历史记录补全（仅在 Shell 环境下有效）',
         check_update: '检查更新',
         checking: '正在检查更新',
         install_now: '立即重启并更新',

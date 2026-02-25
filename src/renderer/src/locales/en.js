@@ -69,6 +69,8 @@ export default {
         title: 'Settings & About',
         auto_update: 'Automatic Updates',
         auto_update_desc: 'Download updates in background automatically',
+        terminal_history: 'Terminal History Suggestions',
+        terminal_history_desc: 'Show command history suggestions while typing (Shell only)',
         check_update: 'Check for Updates',
         checking: 'Checking for updates',
         install_now: 'Restart & Install',

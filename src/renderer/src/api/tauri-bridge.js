@@ -120,6 +120,28 @@ export const appAPI = {
     setConfig: async (enabled) => {
         localStorage.setItem('autoUpdateEnabled', String(enabled))
     },
+    getTerminalHistoryConfig: async () => {
+        return localStorage.getItem('terminalHistoryEnabled') !== 'false'
+    },
+    setTerminalHistoryConfig: async (enabled) => {
+        localStorage.setItem('terminalHistoryEnabled', String(enabled))
+    },
+    getHostHistory: (hostId) => {
+        try {
+            const data = localStorage.getItem(`history_${hostId}`)
+            return data ? JSON.parse(data) : []
+        } catch (e) {
+            return []
+        }
+    },
+    saveHostHistory: (hostId, history) => {
+        try {
+            // 只保存最新的 500 条以节省空间
+            localStorage.setItem(`history_${hostId}`, JSON.stringify(history.slice(0, 500)))
+        } catch (e) {
+            console.error('Failed to save history to local storage', e)
+        }
+    },
     _statusListeners: [],
     _progressListeners: [],
     _currentUpdate: null,

@@ -36,6 +36,17 @@
                 <span class="toggle-slider"></span>
               </label>
             </div>
+
+            <div class="setting-item">
+              <div class="setting-content">
+                <div class="setting-title">{{ $t('settings.terminal_history') }}</div>
+                <div class="setting-desc">{{ $t('settings.terminal_history_desc') }}</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" v-model="terminalHistoryEnabled" @change="toggleTerminalHistory">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
           </div>
 
           <!-- 更新状态区域 -->
@@ -94,6 +105,7 @@ const emit = defineEmits(['update:visible'])
 
 const appVersion = ref('0.1.25') // TODO: fetch from IPC
 const autoUpdateEnabled = ref(true)
+const terminalHistoryEnabled = ref(true)
 const checking = ref(false)
 const updateStatus = ref('')
 const updateMessage = ref('')
@@ -108,6 +120,7 @@ async function loadConfig() {
   try {
     appVersion.value = await appAPI.getVersion()
     autoUpdateEnabled.value = await appAPI.getConfig()
+    terminalHistoryEnabled.value = await appAPI.getTerminalHistoryConfig()
   } catch (e) {
     console.error('Failed to load settings', e)
   }
@@ -116,6 +129,18 @@ async function loadConfig() {
 async function toggleAutoUpdate() {
   try {
     await appAPI.setConfig(autoUpdateEnabled.value)
+  } catch (e) {
+    console.error('Failed to save settings', e)
+  }
+}
+
+async function toggleTerminalHistory() {
+  try {
+    await appAPI.setTerminalHistoryConfig(terminalHistoryEnabled.value)
+    // 触发全局事件或让 TerminalPane 自己查
+    window.dispatchEvent(new CustomEvent('terminal-history-settings-changed', { 
+      detail: { enabled: terminalHistoryEnabled.value } 
+    }))
   } catch (e) {
     console.error('Failed to save settings', e)
   }

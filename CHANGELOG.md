@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.5] - 2026-02-25
+
+### ✨ Terminal History Enhancements
+- **Manual Toggle**: Added a setting to enable/disable terminal history autocomplete suggestions.
+- **Local Caching**: Command history is now cached locally per host, providing **instant suggestions** even on high-latency connections.
+- **TUI Compatibility**: Smart detection (alternate buffer) to hide autocomplete popups when using TUI tools like `vim`, `nano`, or `top`.
+- **UI Polish**: Refined the autocomplete popup style with better spacing, alignment, and typography.
+
 ## [v0.3.4] - 2026-02-25
 
 ### ✨ Features

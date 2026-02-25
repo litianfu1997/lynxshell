@@ -83,7 +83,7 @@
 </template>
 
 <script setup>
-import { sshAPI, sftpAPI } from '@/api/tauri-bridge'
+import { appAPI, sshAPI, sftpAPI } from '@/api/tauri-bridge'
 import { ref, onMounted, watch, onUnmounted, computed } from 'vue'
 import { readText, writeText } from '@tauri-apps/plugin-clipboard-manager'
 import { Terminal } from '@xterm/xterm'
@@ -104,6 +104,7 @@ let unlistenData = null   // Tauri 事件取消订阅函数
 let unlistenClosed = null // Tauri 事件取消订阅函数
 let themeObserver = null
 let clickHandler = null
+let settingsHandler = null
 
 // 右键菜单状态
 const ctxMenu = ref({ show: false, x: 0, y: 0 })
@@ -384,7 +385,14 @@ async function connect() {
     const { cols, rows } = terminal
     sshAPI.resize(props.session.id, cols, rows)
 
-    // 连接成功后，异步加载服务器历史命令
+    // 建立连接时先加载本地缓存的历史记录，解决网络慢时联想提示迟钝的问题
+    const cachedHistory = appAPI.getHostHistory(props.session.hostId)
+    if (cachedHistory && cachedHistory.length > 0) {
+      cmdHistory.value = cachedHistory
+      console.log('[autocomplete] Loaded history from local cache:', cachedHistory.length)
+    }
+
+    // 连接成功后，异步从服务器更新历史命令
     loadServerHistory()
   } catch (err) {
     props.session.status = 'error'
@@ -479,8 +487,13 @@ function parseHistoryFile(content, filePath) {
 function mergeServerHistory(serverCmds) {
   // 去重并只保留最后 500 条（最新在末尾，反转后最新的在前）
   const unique = [...new Set(serverCmds.map(c => c.trim()).filter(c => c.length > 1))]
-  cmdHistory.value = unique.slice(-500).reverse() // 最新命令排在前面
-  console.log('[autocomplete] Server history loaded:', cmdHistory.value.length, 'items')
+  const finalHistory = unique.slice(-500).reverse() // 最新命令排在前面
+  
+  cmdHistory.value = finalHistory
+  // 同步到本地缓存
+  appAPI.saveHostHistory(props.session.hostId, finalHistory)
+  
+  console.log('[autocomplete] Server history loaded and cached:', finalHistory.length, 'items')
 }
 
 async function retry() {
@@ -498,6 +511,16 @@ watch(() => props.visible, (v) => {
 })
 
 onMounted(async () => {
+  historyEnabled.value = await appAPI.getTerminalHistoryConfig()
+  settingsHandler = (e) => {
+    historyEnabled.value = e.detail.enabled
+    if (!historyEnabled.value) {
+      isPopupOpen.value = false
+      suggestions.value = []
+    }
+  }
+  window.addEventListener('terminal-history-settings-changed', settingsHandler)
+
   createTerminal()
   terminal?.focus()
   await connect()
@@ -506,6 +529,7 @@ onMounted(async () => {
 // ===== 终端内原位联想补全功能 =====
 const localBuffer = ref('')
 const isPopupOpen = ref(false)
+const historyEnabled = ref(true)
 const suggestions = ref([])
 const selectedIndex = ref(0)
 const cmdHistory = ref([])    // 仅存储服务器历史
@@ -539,7 +563,7 @@ const ghostText = computed(() => {
 function saveHistory(_cmd) { /* no-op: 只使用服务器历史 */ }
 
 function updateSuggestions() {
-  if (!terminal || terminal.buffer.active.type === 'alternate' || !localBuffer.value.trim()) {
+  if (!historyEnabled.value || !terminal || terminal.buffer.active.type === 'alternate' || !localBuffer.value.trim()) {
     isPopupOpen.value = false;
     suggestions.value = [];
     return;
@@ -620,6 +644,7 @@ function clickSuggestion(index) {
 onUnmounted(() => {
   resizeObserver?.disconnect()
   themeObserver?.disconnect()
+  window.removeEventListener('terminal-history-settings-changed', settingsHandler)
   if (termRef.value && clickHandler) {
     termRef.value.removeEventListener('click', clickHandler)
   }
