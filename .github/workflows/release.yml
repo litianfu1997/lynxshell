@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   # ─────────────────────────────────────────────
-  # 1. 创建 GitHub Release（先行，后续 job 上传产物�?
+  # 1. 创建 GitHub Release（先行，后续 job 上传产物）
   # ─────────────────────────────────────────────
   create-release:
     name: Create Release
@@ -27,7 +27,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME}"
           echo "Extracting changelog for $VERSION"
 
-          # �?CHANGELOG.md 提取当前版本的内容（两个 ## 之间的部分）
+          # 从 CHANGELOG.md 提取当前版本的内容（两个 ## 之间的部分）
           python3 - <<'EOF'
           import re, os, sys
 
@@ -35,7 +35,7 @@ jobs:
           with open("CHANGELOG.md", "r", encoding="utf-8") as f:
               content = f.read()
 
-          # 匹配 ## [vX.Y.Z] 开头的段落，提取到下一�?## 之前
+          # 匹配 ## [vX.Y.Z] 开头的段落，提取到下一个 ## 之前
           pattern = re.compile(
               r'^## \[' + re.escape(version) + r'\].*?\n(.*?)(?=^## \[|\Z)',
               re.MULTILINE | re.DOTALL
@@ -53,12 +53,12 @@ jobs:
           ### 下载 / Downloads
           | 平台 | 文件 | 说明 |
           |------|------|------|
-          | Windows x64 | `*.msi` / `*-setup.exe` | Windows 安装�?|
+          | Windows x64 | `*.msi` / `*-setup.exe` | Windows 安装包 |
           | macOS (Apple Silicon) | `*_aarch64.dmg` | macOS ARM64 磁盘映像 |
           | macOS (Intel) | `*_x64.dmg` | macOS x64 磁盘映像 |
-          | Linux x64 | `.AppImage` / `.deb` | Linux 可执行文件与安装�?|
+          | Linux x64 | `.AppImage` / `.deb` | Linux 可执行文件与安装包 |
 
-          > 源码包由 GitHub 自动生成，见下方 **Assets** 中的 `Source code`�?
+          > 源码包由 GitHub 自动生成，见下方 **Assets** 中的 `Source code`。
           """
 
           # 写入 GitHub Output（多行）
@@ -166,7 +166,7 @@ jobs:
           VER="${GITHUB_REF_NAME#v}"
           echo "Setting version to $VER"
 
-          # 更新 tauri.conf.json 中的版本 (使用 node 脚本以保�?JSON 格式)
+          # 更新 tauri.conf.json 中的版本 (使用 node 脚本以保持 JSON 格式)
           node -e "
             const fs = require('fs');
             const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
