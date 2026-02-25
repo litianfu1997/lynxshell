@@ -126,6 +126,16 @@
         </div>
       </div>
     </div>
+
+    <!-- 删除确认对话框 -->
+    <ConfirmDialog
+      v-model:visible="showDeleteConfirm"
+      type="danger"
+      :title="$t('dialog.delete')"
+      :message="$t('dialog.confirm_delete', { name: form.name })"
+      :confirm-text="$t('dialog.delete')"
+      @confirm="confirmDelete"
+    />
   </Teleport>
 </template>
 
@@ -133,6 +143,7 @@
 import { hostsAPI, sshAPI } from '@/api/tauri-bridge'
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import ConfirmDialog from './ConfirmDialog.vue'
 
 const { t } = useI18n()
 
@@ -159,6 +170,9 @@ const form = ref({
 // 测试连接状态: '' | 'testing' | 'success' | 'failed'
 const testStatus = ref('')
 const testMessage = ref('')
+
+// 删除确认对话框
+const showDeleteConfirm = ref(false)
 
 const isEdit = computed(() => !!props.host?.id)
 
@@ -250,7 +264,10 @@ async function handleTest() {
 }
 
 async function handleDelete() {
-  if (!confirm(t('dialog.confirm_delete', { name: form.value.name }))) return
+  showDeleteConfirm.value = true
+}
+
+async function confirmDelete() {
   await hostsAPI.delete(form.value.id)
   emit('saved')
 }

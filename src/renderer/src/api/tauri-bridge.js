@@ -74,11 +74,11 @@ export const sftpAPI = {
   delete: (sessionId, path) => invoke('sftp_delete', { sessionId, path }),
   rename: (sessionId, oldPath, newPath) => invoke('sftp_rename', { sessionId, oldPath, newPath }),
   mkdir: (sessionId, path) => invoke('sftp_mkdir', { sessionId, path }),
-  getFile: (sessionId, remotePath) => invoke('sftp_get_file', { sessionId, remotePath }),
-  putFile: (sessionId, remotePath, content) => invoke('sftp_put_file', { sessionId, remotePath, content }),
-  pause: (taskId) => invoke('sftp_pause', { taskId }),
-  resume: (taskId) => invoke('sftp_resume', { taskId }),
-  cancel: (taskId) => invoke('sftp_cancel', { taskId }),
+  getFile: (sessionId, path) => invoke('sftp_get_file', { sessionId, path }),
+  putFile: (sessionId, path, content) => invoke('sftp_put_file', { sessionId, path, content }),
+  pause: (transferId) => invoke('sftp_pause', { transferId }),
+  resume: (transferId) => invoke('sftp_resume', { transferId }),
+  cancel: (transferId) => invoke('sftp_cancel', { transferId }),
   move: (sessionId, srcPath, dstPath) => invoke('sftp_move', { sessionId, srcPath, dstPath }),
   stat: (sessionId, path) => invoke('sftp_stat', { sessionId, path }),
   readTextFile: (sessionId, path) => invoke('sftp_read_text_file', { sessionId, path }),
@@ -109,7 +109,10 @@ export const sftpAPI = {
 // === 对话框 ===
 export const dialogAPI = {
   open: (options) => open(options),
-  save: (options) => save(options)
+  save: (options) => save(options),
+  // 兼容 Electron API 的方法名
+  showOpenDialog: (options) => open(options),
+  showSaveDialog: (options) => save(options)
 }
 
 // 内部版本比较

@@ -2,6 +2,11 @@ export default {
     app: {
         title: 'LynxShell',
     },
+    common: {
+        confirm: 'Confirm',
+        cancel: 'Cancel',
+        delete: 'Delete',
+    },
     sidebar: {
         search: 'Search hosts...',
         add_host: 'Add',
@@ -103,6 +108,8 @@ export default {
         parent: 'Parent Directory',
         enter_folder_name: 'Enter folder name',
         confirm_delete: 'Are you sure you want to delete the selected items?',
+        deleteConfirmTitle: 'Confirm Delete',
+        deleteConfirmMessage: 'Are you sure you want to delete {count} item(s)? This action cannot be undone.',
         unsupported_preview: 'This file type is not supported for preview',
         upload_success: 'Upload successful',
         download_success: 'Download successful',

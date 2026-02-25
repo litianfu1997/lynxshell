@@ -1,6 +1,7 @@
 <script setup>
 import { sftpAPI, dialogAPI, sshAPI } from '@/api/tauri-bridge'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import SftpToolbar from './SftpToolbar.vue'
 import SftpTree from './SftpTree.vue'
 import SftpBreadcrumb from './SftpBreadcrumb.vue'
@@ -8,6 +9,9 @@ import SftpFileList from './SftpFileList.vue'
 import SftpPreview from './SftpPreview.vue'
 import SftpEditor from './SftpEditor.vue'
 import TransferQueue from './TransferQueue.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
+
+const { t } = useI18n()
 
 // Props
 const props = defineProps({
@@ -21,7 +25,7 @@ const props = defineProps({
   }
 })
 
-// 状�?
+// 状态
 const currentPath = ref('.')
 const absoluteHomePath = ref('/')
 const fileList = ref([])
@@ -36,11 +40,13 @@ const isInitialLoading = ref(true)
 const showPreview = ref(false)
 const editingFile = ref(null)
 const toast = ref(null)  // { message, type: 'success'|'error' }
+const showDeleteConfirm = ref(false)
+const pendingDeleteFiles = ref([])
 let toastTimer = null
 let unlistenUploadProgress = null   // Tauri 事件取消订阅函数
 let unlistenDownloadProgress = null // Tauri 事件取消订阅函数
 
-// 计算属�?
+// 计算属性
 const selectedCount = computed(() => selectedFiles.value.length)
 
 // 方法
@@ -124,7 +130,7 @@ const handleUpload = async () => {
   let result
   try {
     result = await dialogAPI.showOpenDialog({
-      properties: ['openFile', 'multiSelections']
+      multiple: true
     })
   } catch (e) {
     // 用户取消对话框时 Tauri 可能抛出异常，安全处理
@@ -132,8 +138,10 @@ const handleUpload = async () => {
     return
   }
 
-  if (!result.canceled && result.filePaths.length > 0) {
-    for (const localPath of result.filePaths) {
+  // Tauri 返回 null（取消）、string（单选）或 string[]（多选）
+  const filePaths = result ? (Array.isArray(result) ? result : [result]) : []
+  if (filePaths.length > 0) {
+    for (const localPath of filePaths) {
       const fileName = localPath.split(/[/\\]/).pop()
       const remotePath = currentPath.value === '/' ? `/${fileName}` : (currentPath.value === '.' ? `./${fileName}` : `${currentPath.value}/${fileName}`)
 
@@ -175,7 +183,8 @@ const handleDownload = async () => {
         defaultPath: file.name
       })
 
-      if (!result.canceled) {
+      // Tauri 返回 null（取消）或 string（保存路径）
+      if (result) {
         const transferId = Date.now().toString() + Math.random().toString().slice(2)
         transfers.value.push({
           id: transferId,
@@ -188,7 +197,7 @@ const handleDownload = async () => {
 
         try {
           const remotePath = currentPath.value === '/' ? `/${file.name}` : (currentPath.value === '.' ? file.name : `${currentPath.value}/${file.name}`)
-          await sftpAPI.download(props.session.id, transferId, remotePath, result.filePath)
+          await sftpAPI.download(props.session.id, transferId, remotePath, result)
         } catch (error) {
           if (String(error).includes('Cancelled')) {
             showToast(`文件 ${file.name} 下载已取消`, 'info')
@@ -208,12 +217,15 @@ const handleDownload = async () => {
   }
 }
 
-const handleDelete = async (files) => {
+const handleDelete = (files) => {
   const targets = files && files.length ? files : selectedFiles.value
   if (!targets.length) return
-  if (!confirm(`确定要删�?${targets.length} 个项目吗？`)) return
+  pendingDeleteFiles.value = targets
+  showDeleteConfirm.value = true
+}
 
-  for (const file of targets) {
+const confirmDelete = async () => {
+  for (const file of pendingDeleteFiles.value) {
     try {
       const path = currentPath.value === '/' ? `/${file.name}` : (currentPath.value === '.' ? file.name : `${currentPath.value}/${file.name}`)
       await sftpAPI.delete(props.session.id, path)
@@ -221,6 +233,7 @@ const handleDelete = async (files) => {
       console.error('Delete failed:', error)
     }
   }
+  pendingDeleteFiles.value = []
   selectedFiles.value = []
   refresh()
 }
@@ -315,7 +328,7 @@ const handleEditFile = (file) => {
 }
 
 const onEditorSaved = async (file) => {
-  showToast(`�?${file.name} 已保存到服务器`, 'success')
+  showToast(`${file.name} 已保存到服务器`, 'success')
   await loadDirectory(currentPath.value) // 仅刷新当前目录结构，而不是刷新整棵树
 }
 
@@ -346,7 +359,7 @@ const handleCancelTransfer = async (transferId) => {
   const index = transfers.value.findIndex(t => t.id === transferId)
   if (index > -1) {
     await sftpAPI.cancel(transferId)
-    // 触发 rejected callback, transfers 从那里自动移�?
+    // 触发 rejected callback, transfers 从那里自动移除
   }
 }
 
@@ -500,7 +513,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- 内置代码编辑�?(全屏覆盖 SFTP 界面) -->
+    <!-- 内置代码编辑(全屏覆盖 SFTP 界面) -->
     <SftpEditor
       v-if="editingFile"
       :file="editingFile"
@@ -523,6 +536,17 @@ onUnmounted(() => {
         {{ toast.message }}
       </div>
     </Transition>
+
+    <!-- 删除确认对话框 -->
+    <ConfirmDialog
+      v-model:visible="showDeleteConfirm"
+      :title="$t('sftp.deleteConfirmTitle')"
+      :message="$t('sftp.deleteConfirmMessage', { count: pendingDeleteFiles.length })"
+      type="danger"
+      :confirm-text="$t('common.delete')"
+      :cancel-text="$t('common.cancel')"
+      @confirm="confirmDelete"
+    />
   </div>
 </template>
 

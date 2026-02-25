@@ -2,6 +2,11 @@ export default {
     app: {
         title: 'LynxShell',
     },
+    common: {
+        confirm: '确认',
+        cancel: '取消',
+        delete: '删除',
+    },
     sidebar: {
         search: '搜索主机...',
         add_host: '添加', // 简短一点
@@ -103,6 +108,8 @@ export default {
         parent: '上级目录',
         enter_folder_name: '请输入文件夹名称',
         confirm_delete: '确定要删除选中的项目吗？',
+        deleteConfirmTitle: '确认删除',
+        deleteConfirmMessage: '确定要删除 {count} 个项目吗？此操作不可撤销。',
         unsupported_preview: '此文件类型不支持预览',
         upload_success: '上传成功',
         download_success: '下载成功',
