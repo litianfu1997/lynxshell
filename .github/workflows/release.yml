@@ -369,12 +369,9 @@ jobs:
         run: npx tauri android init
 
       - name: Build Tauri App (Android APK)
-        uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
-        with:
-          mobile: 'android'
+        run: npx tauri android build
 
       - name: Upload Android artifacts
         uses: softprops/action-gh-release@v2
@@ -432,11 +429,7 @@ jobs:
       - name: Build Tauri App (iOS App)
         # iOS 构建需要 Apple 开发者证书才能生成 .ipa
         # 无证书时仍可编译检查代码正确性
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          mobile: 'ios'
+        run: npx tauri ios build
 
       - name: Upload iOS artifacts
         uses: softprops/action-gh-release@v2
