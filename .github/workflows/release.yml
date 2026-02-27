@@ -311,7 +311,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-              src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/appimage/*.AppImage
             src-tauri/target/release/bundle/deb/*.deb
 
   # ─────────────────────────────────────────────
