@@ -271,7 +271,7 @@ export const appAPI = {
 }
 
 // === 平台判断 ===
-export const isMobile = () => {
-  const p = platform()
+export const isMobile = async () => {
+  const p = await platform()
   return p === 'android' || p === 'ios'
 }

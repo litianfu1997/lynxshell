@@ -126,4 +126,43 @@ kbd {
   color: var(--color-primary);
   font-weight: 600;
 }
+
+@media (max-width: 768px) {
+  .welcome-content {
+    width: 100%;
+    max-width: 360px;
+    padding: 20px 16px;
+    gap: 12px;
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .welcome-title {
+    font-size: 34px;
+    line-height: 1.12;
+  }
+
+  .welcome-desc {
+    font-size: 16px;
+    margin-top: 0;
+  }
+
+  .welcome-actions {
+    width: 100%;
+    margin-top: 6px;
+  }
+
+  .welcome-actions .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 10px 14px;
+    font-size: 15px;
+  }
+
+  .tips {
+    display: none;
+  }
+}
 </style>

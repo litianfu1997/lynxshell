@@ -33,7 +33,9 @@ tauri-plugin-shell = "2"
 
 russh = "0.46"
 russh-keys = "0.46"
-russh-sftp = "2.0"
+russh-sftp = "2.0.0-dev"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+rustls = { version = "0.23", features = ["ring"] }
 
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "io-util", "fs", "net"] }
 async-trait = "0.1"
@@ -52,4 +54,3 @@ lto = true
 codegen-units = 1
 strip = true
 panic = "abort"
-

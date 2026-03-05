@@ -406,6 +406,7 @@ function showContextMenu(event, host) {
 .sidebar-footer {
   padding: 8px;
   border-top: 1px solid var(--color-border);
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
 }
 
 .footer-btn {

@@ -2,7 +2,7 @@
   <Teleport to="body">
     <div class="dialog-mask">
       <div class="dialog slide-up-enter-active">
-        <!-- 对话框头部 -->
+        <!-- 瀵硅瘽妗嗗ご閮?-->
         <div class="dialog-header">
           <h2 class="dialog-title">{{ isEdit ? $t('dialog.title_edit') : $t('dialog.title_add') }}</h2>
           <button class="btn-icon" @click="$emit('close')">
@@ -12,7 +12,7 @@
           </button>
         </div>
 
-        <!-- 表单 -->
+        <!-- 琛ㄥ崟 -->
         <div class="dialog-body">
           <div class="form-row">
             <div class="form-group">
@@ -41,7 +41,7 @@
             <input v-model="form.username" class="form-input" placeholder="root" />
           </div>
 
-          <!-- 认证方式切换 -->
+          <!-- 璁よ瘉鏂瑰紡鍒囨崲 -->
           <div class="auth-tabs">
             <button
               class="auth-tab"
@@ -95,15 +95,15 @@
           </div>
         </div>
 
-        <!-- 底部操作 -->
+        <!-- 搴曢儴鎿嶄綔 -->
         <div class="dialog-footer">
           <button
             v-if="isEdit"
-            class="btn btn-danger"
+            class="btn btn-danger btn-delete"
             @click="handleDelete"
-          >删除</button>
+          >鍒犻櫎</button>
           <div style="flex:1" />
-          <!-- 测试连接状态 -->
+          <!-- 娴嬭瘯杩炴帴鐘舵€?-->
           <transition name="fade">
             <span v-if="testStatus" class="test-badge" :class="testStatus">
               <svg v-if="testStatus === 'testing'" class="spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
@@ -113,21 +113,21 @@
             </span>
           </transition>
           <button
-            class="btn btn-test"
+            class="btn btn-test btn-test-conn"
             :disabled="!isValid || testStatus === 'testing'"
             @click="handleTest"
           >
             {{ testStatus === 'testing' ? $t('dialog.testing') : $t('dialog.test_connection') }}
           </button>
-          <button class="btn btn-ghost" @click="$emit('close')">{{ $t('dialog.cancel') }}</button>
-          <button class="btn btn-primary" :disabled="!isValid" @click="handleSave">
+          <button class="btn btn-ghost btn-cancel" @click="$emit('close')">{{ $t('dialog.cancel') }}</button>
+          <button class="btn btn-primary btn-save" :disabled="!isValid" @click="handleSave">
             {{ isEdit ? $t('dialog.save') : $t('dialog.title_add') }}
           </button>
         </div>
       </div>
     </div>
 
-    <!-- 删除确认对话框 -->
+    <!-- 鍒犻櫎纭瀵硅瘽妗?-->
     <ConfirmDialog
       v-model:visible="showDeleteConfirm"
       type="danger"
@@ -163,15 +163,15 @@ const form = ref({
   password: '',
   private_key: '',
   passphrase: '',
-  group_name: '', // 默认留空，显示 placeholder
+  group_name: '', // 榛樿鐣欑┖锛屾樉绀?placeholder
   description: ''
 })
 
-// 测试连接状态: '' | 'testing' | 'success' | 'failed'
+// 娴嬭瘯杩炴帴鐘舵€? '' | 'testing' | 'success' | 'failed'
 const testStatus = ref('')
 const testMessage = ref('')
 
-// 删除确认对话框
+// 鍒犻櫎纭瀵硅瘽妗?
 const showDeleteConfirm = ref(false)
 
 const isEdit = computed(() => !!props.host?.id)
@@ -185,7 +185,7 @@ const isValid = computed(() =>
 
 
 function getGroupValue(g) {
-  if (!g || g === '默认分组' || g === 'Default Group') return ''
+  if (!g || g === '榛樿鍒嗙粍' || g === 'Default Group') return ''
   return g
 }
 
@@ -196,7 +196,7 @@ watch(() => props.host, (h) => {
       group_name: getGroupValue(h.group_name)
     })
   } else {
-    // 重置表单
+    // 閲嶇疆琛ㄥ崟
      form.value = {
       id: null,
       name: '',
@@ -211,7 +211,7 @@ watch(() => props.host, (h) => {
       description: ''
     }
   }
-  // 切换主机时重置测试状态
+  // 鍒囨崲涓绘満鏃堕噸缃祴璇曠姸鎬?
   testStatus.value = ''
   testMessage.value = ''
 }, { immediate: true })
@@ -219,7 +219,7 @@ watch(() => props.host, (h) => {
 async function handleSave() {
   if (!isValid.value) return
   const data = { ...form.value }
-  // 如果分组为空，则存为 'Default Group' 方便国际化
+  // 濡傛灉鍒嗙粍涓虹┖锛屽垯瀛樹负 'Default Group' 鏂逛究鍥介檯鍖?
   if (!data.group_name.trim()) {
     data.group_name = 'Default Group'
   }
@@ -256,7 +256,7 @@ async function handleTest() {
     testStatus.value = 'failed'
     testMessage.value = e.message || t('dialog.test_failed')
   }
-  // 5 秒后自动清除
+  // 5 绉掑悗鑷姩娓呴櫎
   setTimeout(() => {
     testStatus.value = ''
     testMessage.value = ''
@@ -284,6 +284,7 @@ async function confirmDelete() {
   justify-content: center;
   z-index: 1000;
   animation: fadeIn 0.15s ease;
+  padding: 20px 20px calc(20px + var(--keyboard-inset)) 20px;
 }
 
 @keyframes fadeIn {
@@ -292,7 +293,7 @@ async function confirmDelete() {
 }
 
 .dialog {
-  width: 520px;
+  width: min(520px, 100%);
   max-height: 90vh;
   background: var(--color-bg-2);
   border: 1px solid var(--color-border);
@@ -316,11 +317,12 @@ async function confirmDelete() {
   padding: 16px 20px;
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
+  background: var(--color-bg-2);
 }
 
 .dialog-title {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
 }
 
 .btn-icon {
@@ -395,17 +397,19 @@ async function confirmDelete() {
 .dialog-footer {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 12px 20px;
   border-top: 1px solid var(--color-border);
   flex-shrink: 0;
+  background: var(--color-bg-2);
 }
 .dialog-footer .btn {
   font-size: 12px;
   padding: 5px 12px;
 }
 
-/* 测试连接按钮 */
+/* 娴嬭瘯杩炴帴鎸夐挳 */
 .btn-test {
   display: inline-flex;
   align-items: center;
@@ -430,7 +434,7 @@ async function confirmDelete() {
   cursor: not-allowed;
 }
 
-/* 测试结果徽章 */
+/* 娴嬭瘯缁撴灉寰界珷 */
 .test-badge {
   display: inline-flex;
   align-items: center;
@@ -463,7 +467,7 @@ async function confirmDelete() {
   white-space: nowrap;
 }
 
-/* 旋转动画 */
+/* 鏃嬭浆鍔ㄧ敾 */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -472,7 +476,7 @@ async function confirmDelete() {
   animation: spin 1s linear infinite;
 }
 
-/* fade 过渡 */
+/* fade 杩囨浮 */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;
@@ -480,5 +484,107 @@ async function confirmDelete() {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+@media (max-width: 768px) {
+  .dialog-mask {
+    align-items: flex-end;
+    justify-content: stretch;
+    padding: 0 0 var(--keyboard-inset) 0;
+    backdrop-filter: none;
+  }
+
+  .dialog {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 18px 18px 0 0;
+    border-bottom: none;
+  }
+
+  .dialog-header {
+    padding: 14px 16px;
+  }
+
+  .dialog-title {
+    font-size: 32px;
+    line-height: 1.1;
+  }
+
+  .btn-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: var(--color-bg-3);
+  }
+
+  .dialog-body {
+    padding: 14px 14px 10px;
+    gap: 12px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .form-row > .form-group {
+    flex: 1 1 auto !important;
+  }
+
+  .form-label {
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    text-transform: none;
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    font-size: 16px;
+    padding: 10px 12px;
+  }
+
+  .auth-tabs {
+    padding: 4px;
+    border-radius: 10px;
+  }
+
+  .auth-tab {
+    font-size: 14px;
+    padding: 9px 8px;
+  }
+
+  .dialog-footer {
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    gap: 8px;
+  }
+
+  .dialog-footer .btn {
+    height: 40px;
+    font-size: 15px;
+    padding: 0 14px;
+    justify-content: center;
+  }
+
+  .test-badge {
+    order: 1;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-test-conn {
+    order: 2;
+    flex: 1 1 100%;
+  }
+
+  .btn-cancel,
+  .btn-save,
+  .btn-delete {
+    flex: 1 1 calc(50% - 4px);
+  }
+
+  .btn-save {
+    font-weight: 700;
+  }
 }
 </style>

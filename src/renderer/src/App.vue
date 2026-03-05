@@ -1,5 +1,5 @@
 <template>
-  <div class="app-layout">
+  <div class="app-layout" :class="{ 'mobile-platform': isMobilePlatform }">
     <!-- 自定义标题栏 -->
     <TitleBar @open-settings="showSettingsDialog = true" @toggle-sidebar="mobileSidebarOpen = !mobileSidebarOpen" />
 
@@ -80,6 +80,7 @@
 
 <script setup>
 import { sshAPI, hostsAPI, sftpAPI } from '@/api/tauri-bridge'
+import { platform } from '@tauri-apps/plugin-os'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import TitleBar from './components/TitleBar.vue'
@@ -103,6 +104,7 @@ const activeSessionId = ref(null)
 const showHostDialog = ref(false)
 const showSettingsDialog = ref(false)
 const mobileSidebarOpen = ref(false)
+const isMobilePlatform = ref(false)
 const editingHost = ref(null)
 const pingStatuses = ref({})
 
@@ -233,7 +235,9 @@ function renameSession({ id, name }) {
 
 let statusInterval = null
 
-onMounted(() => {
+onMounted(async () => {
+  const p = await platform()
+  isMobilePlatform.value = p === 'android' || p === 'ios'
   loadHosts()
   statusInterval = setInterval(checkAllHosts, 30000)
 })
@@ -252,10 +256,15 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+.app-layout.mobile-platform {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 .app-body {
   display: flex;
   flex: 1;
   overflow: hidden;
+  position: relative;
 }
 
 .main-area {
@@ -274,6 +283,39 @@ onUnmounted(() => {
 
 .mobile-sidebar-overlay {
   display: none;
+}
+
+.app-layout.mobile-platform .adaptive-sidebar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  width: min(84vw, 320px);
+  box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  height: 100%;
+}
+
+.app-layout.mobile-platform .adaptive-sidebar.mobile-open {
+  transform: translateX(0);
+}
+
+.app-layout.mobile-platform .mobile-sidebar-overlay {
+  display: block;
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 99;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.app-layout.mobile-platform .mobile-sidebar-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 @media (max-width: 768px) {

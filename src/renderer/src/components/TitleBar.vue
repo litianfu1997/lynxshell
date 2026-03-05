@@ -1,6 +1,5 @@
 <template>
-  <div class="titlebar" @dblclick="maximize">
-    <!-- 移动端侧边栏切换按钮 -->
+  <div class="titlebar" :class="{ mobile: isMobilePlatform }" @dblclick="handleTitleBarDoubleClick">
     <button class="mobile-menu-btn" @click="$emit('toggle-sidebar')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -8,8 +7,7 @@
         <line x1="3" y1="18" x2="21" y2="18"></line>
       </svg>
     </button>
-    
-    <!-- 应用图标 + 名称 -->
+
     <div class="titlebar-left">
       <div class="app-icon">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -20,56 +18,65 @@
       <span class="app-name">LynxShell</span>
     </div>
 
-    <!-- 拖拽区域 -->
-    <div class="titlebar-drag" />
+    <div class="titlebar-drag" v-if="!isMobilePlatform" />
 
-    <!-- 窗口控制按钮 -->
     <div class="titlebar-controls">
-      <button class="theme-btn" @click="toggleTheme" :title="isDark ? 'Light Mode' : 'Dark Mode'">
-        <svg v-if="isDark" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-        </svg>
-        <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </svg>
-      </button>
-      
-      <button class="theme-btn" @click="$emit('open-settings')" title="Settings">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
-      </button>
+      <template v-if="isMobilePlatform">
+        <button class="theme-btn" @click="$emit('open-settings')" title="Settings">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </template>
 
-      <div class="divider-v" />
-      <button class="lang-btn" @click="toggleLang" title="Switch Language">
-        {{ locale === 'zh' ? 'EN' : '中' }}
-      </button>
-      <div class="divider-v" />
-      <button class="ctrl-btn" title="最小化" @click="minimize">
-        <svg width="10" height="2" viewBox="0 0 10 2"><rect width="10" height="2" rx="1" fill="currentColor"/></svg>
-      </button>
-      <button class="ctrl-btn" title="最大化" @click="maximize">
-        <svg width="10" height="10" viewBox="0 0 10 10">
-          <rect x="1" y="1" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
-        </svg>
-      </button>
-      <button class="ctrl-btn ctrl-close" title="关闭" @click="close">
-        <svg width="10" height="10" viewBox="0 0 10 10">
-          <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-      </button>
+      <template v-else>
+        <button class="theme-btn" @click="toggleTheme" :title="isDark ? 'Light Mode' : 'Dark Mode'">
+          <svg v-if="isDark" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+          <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+        <button class="theme-btn" @click="$emit('open-settings')" title="Settings">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+        <div class="divider-v" />
+        <button class="lang-btn" @click="toggleLang" title="Switch Language">
+          {{ locale === 'zh' ? 'EN' : '中' }}
+        </button>
+        <div class="divider-v" />
+        <button class="ctrl-btn" title="最小化" @click="minimize">
+          <svg width="10" height="2" viewBox="0 0 10 2"><rect width="10" height="2" rx="1" fill="currentColor"/></svg>
+        </button>
+        <button class="ctrl-btn" title="最大化" @click="maximize">
+          <svg width="10" height="10" viewBox="0 0 10 10">
+            <rect x="1" y="1" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          </svg>
+        </button>
+        <button class="ctrl-btn ctrl-close" title="关闭" @click="close">
+          <svg width="10" height="10" viewBox="0 0 10 10">
+            <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup>
 import { windowAPI } from '@/api/tauri-bridge'
+import { platform } from '@tauri-apps/plugin-os'
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { locale } = useI18n()
 const isDark = ref(true)
+const isMobilePlatform = ref(false)
 
 function toggleTheme() {
   isDark.value = !isDark.value
@@ -90,11 +97,18 @@ function toggleLang() {
   localStorage.setItem('locale', locale.value)
 }
 
+function handleTitleBarDoubleClick() {
+  if (!isMobilePlatform.value) maximize()
+}
+
 function minimize() { windowAPI.minimize() }
 function maximize() { windowAPI.maximize() }
 function close() { windowAPI.close() }
 
-onMounted(() => {
+onMounted(async () => {
+  const p = await platform()
+  isMobilePlatform.value = p === 'android' || p === 'ios'
+
   const savedTheme = localStorage.getItem('theme')
   isDark.value = savedTheme !== 'light'
   applyTheme()
@@ -114,6 +128,12 @@ onMounted(() => {
   padding: 0 8px;
 }
 
+.titlebar.mobile {
+  -webkit-app-region: no-drag;
+  height: calc(var(--titlebar-height) + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+}
+
 .titlebar-left {
   display: flex;
   align-items: center;
@@ -122,7 +142,7 @@ onMounted(() => {
 }
 
 .mobile-menu-btn {
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
@@ -132,12 +152,6 @@ onMounted(() => {
   color: var(--color-text);
   cursor: pointer;
   -webkit-app-region: no-drag;
-}
-
-@media (max-width: 768px) {
-  .mobile-menu-btn {
-    display: flex;
-  }
 }
 
 .app-icon {
@@ -164,6 +178,10 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   -webkit-app-region: no-drag;
+}
+
+.titlebar.mobile .titlebar-controls {
+  margin-left: auto;
 }
 
 .ctrl-btn {
@@ -212,6 +230,7 @@ onMounted(() => {
   border-radius: var(--radius-sm);
   -webkit-app-region: no-drag;
 }
+
 .theme-btn:hover {
   background: var(--color-bg-4);
   color: var(--color-text);

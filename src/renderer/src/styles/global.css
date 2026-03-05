@@ -34,6 +34,7 @@
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  --keyboard-inset: 0px;
 }
 
 /* ===== Light Mode (macOS Inspired) ===== */
@@ -73,6 +74,7 @@ body,
 #app {
   width: 100%;
   height: 100%;
+  min-height: 100dvh;
   overflow: hidden;
   font-family: var(--font-sans);
   font-size: 13px;

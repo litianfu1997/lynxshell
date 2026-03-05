@@ -4,7 +4,7 @@
       <div class="dialog-box settings-dialog" @click.stop>
         <div class="dialog-header">
           <h3>{{ $t('settings.title') }}</h3>
-          <button class="close-btn" @click="close">
+          <button class="close-btn" @click="close" aria-label="Close settings">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -13,18 +13,12 @@
         </div>
 
         <div class="dialog-content">
-          <!-- 版本信息 -->
           <div class="version-section">
-            <div class="logo-container">
-              <img :src="iconPath" alt="Logo" class="app-logo" />
-            </div>
-            <div class="app-info">
-              <div class="app-name">LynxShell</div>
-              <div class="app-version-badge">v{{ appVersion }}</div>
-            </div>
+            <img :src="iconPath" alt="LynxShell" class="app-logo" />
+            <div class="app-name">LynxShell</div>
+            <div class="app-version-badge">v{{ appVersion }}</div>
           </div>
 
-          <!-- 设置项列表 -->
           <div class="settings-group">
             <div class="setting-item">
               <div class="setting-content">
@@ -32,7 +26,7 @@
                 <div class="setting-desc">{{ $t('settings.auto_update_desc') }}</div>
               </div>
               <label class="toggle-switch">
-                <input type="checkbox" v-model="autoUpdateEnabled" @change="toggleAutoUpdate">
+                <input type="checkbox" v-model="autoUpdateEnabled" @change="toggleAutoUpdate" />
                 <span class="toggle-slider"></span>
               </label>
             </div>
@@ -43,13 +37,12 @@
                 <div class="setting-desc">{{ $t('settings.terminal_history_desc') }}</div>
               </div>
               <label class="toggle-switch">
-                <input type="checkbox" v-model="terminalHistoryEnabled" @change="toggleTerminalHistory">
+                <input type="checkbox" v-model="terminalHistoryEnabled" @change="toggleTerminalHistory" />
                 <span class="toggle-slider"></span>
               </label>
             </div>
           </div>
 
-          <!-- 更新状态区域 -->
           <Transition name="slide-fade">
             <div class="update-status-card" v-if="updateStatus">
               <div class="status-header">
@@ -57,14 +50,14 @@
                 <span class="status-text">
                   <template v-if="updateStatus === 'checking'">{{ $t('settings.checking') }}...</template>
                   <template v-else-if="updateStatus === 'available'">{{ $t('settings.update_available') }} v{{ updateMessage }}</template>
-                  <template v-else-if="updateStatus === 'not-available'">已是最新版本</template>
+                  <template v-else-if="updateStatus === 'not-available'">{{ $t('settings.latest') }}</template>
                   <template v-else-if="updateStatus === 'downloading'">{{ $t('settings.downloading') }}</template>
                   <template v-else-if="updateStatus === 'downloaded'">{{ $t('settings.update_downloaded') }}</template>
                   <template v-else-if="updateStatus === 'error'">{{ $t('settings.update_error') }}</template>
                   <template v-else>{{ updateMessage }}</template>
                 </span>
               </div>
-              
+
               <div class="progress-bar-container" v-if="updateStatus === 'downloading'">
                 <div class="progress-bar-fill" :style="{ width: downloadProgress + '%' }"></div>
               </div>
@@ -75,9 +68,8 @@
                   {{ updateStatus === 'available' ? '确认下载' : $t('settings.install_now') }}
                 </button>
               </div>
-               <div class="update-error-msg" v-if="updateStatus === 'error'">
-                {{ updateMessage }}
-              </div>
+
+              <div class="update-error-msg" v-if="updateStatus === 'error'">{{ updateMessage }}</div>
             </div>
           </Transition>
         </div>
@@ -98,12 +90,15 @@ import { appAPI } from '@/api/tauri-bridge'
 import { ref, onMounted } from 'vue'
 import iconPath from '@/assets/icon.png'
 
-const props = defineProps({
+const AUTO_UPDATE_KEY = 'autoUpdateEnabled'
+
+defineProps({
   visible: Boolean
 })
+
 const emit = defineEmits(['update:visible'])
 
-const appVersion = ref('0.1.25') // TODO: fetch from IPC
+const appVersion = ref('0.0.0')
 const autoUpdateEnabled = ref(true)
 const terminalHistoryEnabled = ref(true)
 const checking = ref(false)
@@ -115,51 +110,43 @@ function close() {
   emit('update:visible', false)
 }
 
-// 自动更新逻辑
 async function loadConfig() {
   try {
     appVersion.value = await appAPI.getVersion()
-    autoUpdateEnabled.value = await appAPI.getConfig()
+    autoUpdateEnabled.value = localStorage.getItem(AUTO_UPDATE_KEY) !== 'false'
     terminalHistoryEnabled.value = await appAPI.getTerminalHistoryConfig()
   } catch (e) {
     console.error('Failed to load settings', e)
   }
 }
 
-async function toggleAutoUpdate() {
-  try {
-    await appAPI.setConfig(autoUpdateEnabled.value)
-  } catch (e) {
-    console.error('Failed to save settings', e)
-  }
+function toggleAutoUpdate() {
+  localStorage.setItem(AUTO_UPDATE_KEY, String(autoUpdateEnabled.value))
 }
 
 async function toggleTerminalHistory() {
   try {
     await appAPI.setTerminalHistoryConfig(terminalHistoryEnabled.value)
-    // 触发全局事件或让 TerminalPane 自己查
-    window.dispatchEvent(new CustomEvent('terminal-history-settings-changed', { 
-      detail: { enabled: terminalHistoryEnabled.value } 
+    window.dispatchEvent(new CustomEvent('terminal-history-settings-changed', {
+      detail: { enabled: terminalHistoryEnabled.value }
     }))
   } catch (e) {
-    console.error('Failed to save settings', e)
+    console.error('Failed to save terminal history settings', e)
   }
 }
 
 async function checkUpdate() {
   if (checking.value) return
+
   checking.value = true
   updateStatus.value = 'checking'
   updateMessage.value = ''
-  
+
   try {
-    const result = await appAPI.checkManual()
-    // result 是 updateCheckResult 对象
-    // 如果没有更新，result?.updateInfo.version 可能就是当前版本
-    // 但通常 update-not-available 事件会触发
+    await appAPI.checkManual()
   } catch (e) {
     updateStatus.value = 'error'
-    updateMessage.value = e.message
+    updateMessage.value = e?.message || String(e)
     checking.value = false
   }
 }
@@ -168,31 +155,43 @@ function installUpdate() {
   appAPI.install()
 }
 
-// 监听主进程的 updater 消息
 onMounted(() => {
   loadConfig()
 
   appAPI.onStatus((status, info) => {
     checking.value = status === 'checking'
     updateStatus.value = status
-    
+
     if (status === 'checking') {
       updateMessage.value = ''
-    } else if (status === 'available') {
-      // info 是 updateInfo
-      updateMessage.value = info.version
-    } else if (status === 'not-available') {
+      return
+    }
+
+    if (status === 'available') {
+      updateMessage.value = info?.version || ''
+      return
+    }
+
+    if (status === 'not-available') {
       updateMessage.value = ''
-    } else if (status === 'downloaded') {
-      updateMessage.value = info.version
-    } else if (status === 'error') {
-      updateMessage.value = info // info 是 error message
+      return
+    }
+
+    if (status === 'downloaded') {
+      updateMessage.value = info?.version || ''
+      return
+    }
+
+    if (status === 'error') {
+      updateMessage.value = typeof info === 'string' ? info : (info?.message || '')
     }
   })
 
-  appAPI.onProgress((progressObj) => {
+  appAPI.onProgress((progress) => {
     updateStatus.value = 'downloading'
-    downloadProgress.value = Math.floor(progressObj.percent)
+    downloadProgress.value = typeof progress === 'number'
+      ? Math.floor(progress)
+      : Math.floor(progress?.percent || 0)
     updateMessage.value = `${downloadProgress.value}%`
   })
 })
@@ -201,20 +200,19 @@ onMounted(() => {
 <style scoped>
 .dialog-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.6);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.62);
   backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  padding: 20px 20px calc(20px + var(--keyboard-inset)) 20px;
 }
 
 .settings-dialog {
-  width: 420px;
+  width: min(460px, 100%);
+  max-height: min(86vh, 760px);
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: 16px;
@@ -222,22 +220,21 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: dialog-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .dialog-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 16px 18px;
   border-bottom: 1px solid var(--color-border-light);
   background: var(--color-bg-2);
 }
 
 .dialog-header h3 {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--color-text);
 }
 
@@ -246,8 +243,8 @@ onMounted(() => {
   border: none;
   color: var(--color-text-2);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
+  padding: 6px;
+  border-radius: 8px;
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -260,44 +257,34 @@ onMounted(() => {
 }
 
 .dialog-content {
-  padding: 24px 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 14px;
+  overflow-y: auto;
 }
 
-/* Version Section */
 .version-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-align: center;
-  margin-bottom: 8px;
-}
-
-.logo-container {
-  margin-bottom: 16px;
-  filter: drop-shadow(0 4px 12px rgba(79, 142, 247, 0.2));
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--color-border-light);
+  background: var(--color-bg-2);
+  border-radius: 14px;
 }
 
 .app-logo {
-  width: 72px;
-  height: 72px;
-  display: block;
-}
-
-.app-info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
+  width: 64px;
+  height: 64px;
 }
 
 .app-name {
-  font-size: 18px;
+  font-size: 28px;
   font-weight: 700;
   color: var(--color-text);
-  letter-spacing: -0.01em;
+  line-height: 1.1;
 }
 
 .app-version-badge {
@@ -305,32 +292,26 @@ onMounted(() => {
   font-family: var(--font-mono);
   color: var(--color-primary);
   background: var(--color-primary-light);
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 700;
 }
 
-/* Settings Group */
 .settings-group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .setting-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
+  gap: 12px;
+  padding: 14px;
   background: var(--color-bg-2);
   border: 1px solid var(--color-border-light);
   border-radius: 12px;
-  transition: all 0.2s;
-}
-
-.setting-item:hover {
-  border-color: var(--color-border);
-  background: var(--color-bg-3);
 }
 
 .setting-content {
@@ -340,22 +321,21 @@ onMounted(() => {
 }
 
 .setting-title {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--color-text);
 }
 
 .setting-desc {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--color-text-3);
   line-height: 1.4;
 }
 
-/* Toggle Switch */
 .toggle-switch {
   position: relative;
-  width: 44px;
-  height: 24px;
+  width: 48px;
+  height: 28px;
   flex-shrink: 0;
 }
 
@@ -368,27 +348,23 @@ onMounted(() => {
 .toggle-slider {
   position: absolute;
   cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background-color: var(--color-bg-4);
-  transition: .3s cubic-bezier(0.4, 0.0, 0.2, 1);
-  border-radius: 24px;
+  transition: .25s ease;
+  border-radius: 28px;
   border: 1px solid transparent;
 }
 
 .toggle-slider:before {
   position: absolute;
   content: "";
-  height: 18px;
-  width: 18px;
+  height: 22px;
+  width: 22px;
   left: 2px;
   bottom: 2px;
-  background-color: white;
-  transition: .3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  background-color: #fff;
+  transition: .25s ease;
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
 
 .toggle-switch input:checked + .toggle-slider {
@@ -400,15 +376,10 @@ onMounted(() => {
   transform: translateX(20px);
 }
 
-.toggle-switch input:focus-visible + .toggle-slider {
-  box-shadow: 0 0 0 3px var(--color-primary-light);
-}
-
-/* Update Status Card */
 .update-status-card {
-  background: var(--color-bg-3);
+  background: var(--color-bg-2);
   border-radius: 12px;
-  padding: 16px;
+  padding: 14px;
   border: 1px solid var(--color-border-light);
 }
 
@@ -416,7 +387,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
 }
 
 .status-indicator {
@@ -442,7 +412,7 @@ onMounted(() => {
   background: var(--color-bg-4);
   border-radius: 99px;
   overflow: hidden;
-  margin: 12px 0 8px 0;
+  margin: 12px 0 6px;
 }
 
 .progress-bar-fill {
@@ -460,48 +430,41 @@ onMounted(() => {
 }
 
 .update-actions {
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 .update-error-msg {
   color: var(--color-danger);
   font-size: 12px;
   margin-top: 8px;
-  line-height: 1.4;
 }
 
-/* Footer */
 .dialog-footer {
-  padding: 16px 20px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
   background: var(--color-bg-2);
   border-top: 1px solid var(--color-border-light);
-  display: flex;
-  justify-content: center;
 }
 
 .check-btn {
   width: 100%;
   justify-content: center;
-  height: 36px;
+  height: 40px;
   background: var(--color-bg);
   border: 1px solid var(--color-border-light);
   color: var(--color-text);
-  font-weight: 500;
-  border-radius: 8px;
-  transition: all 0.2s;
+  font-weight: 600;
+  border-radius: 10px;
 }
 
 .check-btn:hover:not(:disabled) {
   background: var(--color-bg-3);
-  border-color: var(--color-border);
 }
 
 .check-btn:disabled {
-  opacity: 0.7;
+  opacity: 0.75;
   cursor: wait;
 }
 
-/* Spinner */
 .spinner {
   width: 14px;
   height: 14px;
@@ -518,12 +481,6 @@ onMounted(() => {
   justify-content: center;
 }
 
-/* Animations */
-@keyframes dialog-pop {
-  0% { opacity: 0; transform: scale(0.95); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -538,20 +495,75 @@ onMounted(() => {
 .dialog-fade-leave-active {
   transition: opacity 0.2s ease;
 }
+
 .dialog-fade-enter-from,
 .dialog-fade-leave-to {
   opacity: 0;
 }
 
 .slide-fade-enter-active {
-  transition: all 0.3s ease-out;
+  transition: all 0.25s ease-out;
 }
+
 .slide-fade-leave-active {
-  transition: all 0.2s cubic-bezier(1, 0.5, 0.8, 1);
+  transition: all 0.2s ease;
 }
+
 .slide-fade-enter-from,
 .slide-fade-leave-to {
-  transform: translateY(-10px);
+  transform: translateY(-8px);
   opacity: 0;
+}
+
+@media (max-width: 768px) {
+  .dialog-overlay {
+    align-items: flex-end;
+    padding: 0 0 var(--keyboard-inset) 0;
+    backdrop-filter: none;
+  }
+
+  .settings-dialog {
+    width: 100%;
+    max-height: 90vh;
+    border-radius: 18px 18px 0 0;
+    border-bottom: none;
+  }
+
+  .dialog-header {
+    padding: 16px;
+  }
+
+  .dialog-header h3 {
+    font-size: 30px;
+  }
+
+  .close-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: var(--color-bg-3);
+  }
+
+  .dialog-content {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .app-logo {
+    width: 56px;
+    height: 56px;
+  }
+
+  .app-name {
+    font-size: 20px;
+  }
+
+  .setting-title {
+    font-size: 15px;
+  }
+
+  .setting-desc {
+    font-size: 12px;
+  }
 }
 </style>

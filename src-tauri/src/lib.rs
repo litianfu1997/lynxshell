@@ -3,8 +3,16 @@ mod db;
 mod ssh;
 mod sftp;
 
+#[cfg(target_os = "android")]
+fn init_android_tls_provider() {
+  let _ = rustls::crypto::ring::default_provider().install_default();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  #[cfg(target_os = "android")]
+  init_android_tls_provider();
+
   tauri::Builder::default()
     .manage(ssh::SshManager::new())
     .manage(sftp::SftpManager::new())
