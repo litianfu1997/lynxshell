@@ -9,7 +9,7 @@
         "dev": "tauri dev",
         "build": "tauri build",
         "tauri": "tauri",
-        "vite:dev": "vite",
+        "vite:dev": "vite --host",
         "vite:build": "vite build"
     },
     "dependencies": {

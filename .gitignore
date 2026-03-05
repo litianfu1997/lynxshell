@@ -34,3 +34,8 @@ desktop.ini
 *.temp
 .agents/*
 out/*
+
+# ===== Local tooling artifacts =====
+.claude/
+src-tauri/gen/
+nul
