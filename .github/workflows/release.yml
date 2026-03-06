@@ -413,19 +413,25 @@ jobs:
       - name: Rename Android artifacts
         shell: bash
         run: |
+          set -euo pipefail
           mkdir -p android-artifacts
           VER="${GITHUB_REF_NAME#v}"
 
           if [ "${{ steps.android_signing.outputs.has_signing }}" = "true" ]; then
-            find src-tauri/gen/android/app/build/outputs/apk/release -name "*release*.apk" ! -name "*unsigned*" | while read -r file; do
+            find src-tauri/gen/android/app/build/outputs/apk -type f -name "*.apk" -name "*release*" ! -name "*unsigned*" | while read -r file; do
               filename=$(basename "$file")
               cp "$file" "android-artifacts/LynxShell_${VER}_${filename}"
             done
           else
-            find src-tauri/gen/android/app/build/outputs/apk/debug \( -name "*arm64-v8a*debug*.apk" -o -name "*armeabi-v7a*debug*.apk" -o -name "*universal*debug*.apk" \) | while read -r file; do
+            find src-tauri/gen/android/app/build/outputs/apk -type f -name "*.apk" \( -name "*arm64-v8a*debug*.apk" -o -name "*armeabi-v7a*debug*.apk" -o -name "*universal*debug*.apk" -o -name "*debug*.apk" \) | while read -r file; do
               filename=$(basename "$file")
               cp "$file" "android-artifacts/LynxShell_${VER}_${filename}"
             done
+          fi
+
+          if [ -z "$(find android-artifacts -maxdepth 1 -type f -name "*.apk" -print -quit)" ]; then
+            echo "No Android APK artifacts were found after build."
+            exit 1
           fi
 
       - name: Upload Android artifacts
