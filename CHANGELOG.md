@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.12] - 2026-03-06
+
+### Features
+- Aligned the Android launcher name with the desktop branding so both platforms now display **LynxShell** consistently.
+
+### Docs
+- Updated `README.md` to reflect the current `v0.3.12` release and cross-platform naming.
+- Refreshed release notes for the latest version.
+
 ## [v0.3.6] - 2026-02-25
 
 ### 🚀 Rebranding & Fixes

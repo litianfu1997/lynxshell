@@ -682,6 +682,7 @@ function handleMobileInput(data) {
   inset: 0;
   display: flex;
   flex-direction: column;
+  will-change: opacity, z-index;
 }
 
 .mobile-keys-bar {
@@ -898,5 +899,13 @@ function handleMobileInput(data) {
 }
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
+}
+
+@media (max-width: 768px) {
+  .ctx-item {
+    padding: 12px 16px;
+    font-size: 14px;
+    min-height: 48px;
+  }
 }
 </style>

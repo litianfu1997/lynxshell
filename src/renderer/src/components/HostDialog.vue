@@ -2,7 +2,7 @@
   <Teleport to="body">
     <div class="dialog-mask">
       <div class="dialog slide-up-enter-active">
-        <!-- 瀵硅瘽妗嗗ご閮?-->
+        <!-- Header -->
         <div class="dialog-header">
           <h2 class="dialog-title">{{ isEdit ? $t('dialog.title_edit') : $t('dialog.title_add') }}</h2>
           <button class="btn-icon" @click="$emit('close')">
@@ -12,7 +12,7 @@
           </button>
         </div>
 
-        <!-- 琛ㄥ崟 -->
+        <!-- Form -->
         <div class="dialog-body">
           <div class="form-row">
             <div class="form-group">
@@ -41,7 +41,7 @@
             <input v-model="form.username" class="form-input" placeholder="root" />
           </div>
 
-          <!-- 璁よ瘉鏂瑰紡鍒囨崲 -->
+          <!-- Auth type switch -->
           <div class="auth-tabs">
             <button
               class="auth-tab"
@@ -95,15 +95,15 @@
           </div>
         </div>
 
-        <!-- 搴曢儴鎿嶄綔 -->
+        <!-- Footer actions -->
         <div class="dialog-footer">
           <button
             v-if="isEdit"
             class="btn btn-danger btn-delete"
             @click="handleDelete"
-          >鍒犻櫎</button>
-          <div style="flex:1" />
-          <!-- 娴嬭瘯杩炴帴鐘舵€?-->
+          >{{ $t('dialog.delete') }}</button>
+          <div class="footer-spacer" />
+          <!-- Test connection state -->
           <transition name="fade">
             <span v-if="testStatus" class="test-badge" :class="testStatus">
               <svg v-if="testStatus === 'testing'" class="spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
@@ -119,7 +119,6 @@
           >
             {{ testStatus === 'testing' ? $t('dialog.testing') : $t('dialog.test_connection') }}
           </button>
-          <button class="btn btn-ghost btn-cancel" @click="$emit('close')">{{ $t('dialog.cancel') }}</button>
           <button class="btn btn-primary btn-save" :disabled="!isValid" @click="handleSave">
             {{ isEdit ? $t('dialog.save') : $t('dialog.title_add') }}
           </button>
@@ -127,7 +126,7 @@
       </div>
     </div>
 
-    <!-- 鍒犻櫎纭瀵硅瘽妗?-->
+    <!-- Delete confirmation -->
     <ConfirmDialog
       v-model:visible="showDeleteConfirm"
       type="danger"
@@ -163,15 +162,15 @@ const form = ref({
   password: '',
   private_key: '',
   passphrase: '',
-  group_name: '', // 榛樿鐣欑┖锛屾樉绀?placeholder
+  group_name: '', // Leave empty to show placeholder
   description: ''
 })
 
-// 娴嬭瘯杩炴帴鐘舵€? '' | 'testing' | 'success' | 'failed'
+// Test status: '' | 'testing' | 'success' | 'failed'
 const testStatus = ref('')
 const testMessage = ref('')
 
-// 鍒犻櫎纭瀵硅瘽妗?
+// Delete confirmation dialog
 const showDeleteConfirm = ref(false)
 
 const isEdit = computed(() => !!props.host?.id)
@@ -185,7 +184,7 @@ const isValid = computed(() =>
 
 
 function getGroupValue(g) {
-  if (!g || g === '榛樿鍒嗙粍' || g === 'Default Group') return ''
+  if (!g || g === '默认分组' || g === 'Default Group') return ''
   return g
 }
 
@@ -196,7 +195,7 @@ watch(() => props.host, (h) => {
       group_name: getGroupValue(h.group_name)
     })
   } else {
-    // 閲嶇疆琛ㄥ崟
+    // Reset form when creating a new host
      form.value = {
       id: null,
       name: '',
@@ -211,7 +210,7 @@ watch(() => props.host, (h) => {
       description: ''
     }
   }
-  // 鍒囨崲涓绘満鏃堕噸缃祴璇曠姸鎬?
+  // Clear test status when host changes
   testStatus.value = ''
   testMessage.value = ''
 }, { immediate: true })
@@ -219,7 +218,7 @@ watch(() => props.host, (h) => {
 async function handleSave() {
   if (!isValid.value) return
   const data = { ...form.value }
-  // 濡傛灉鍒嗙粍涓虹┖锛屽垯瀛樹负 'Default Group' 鏂逛究鍥介檯鍖?
+  // Keep storage value stable for i18n by using Default Group
   if (!data.group_name.trim()) {
     data.group_name = 'Default Group'
   }
@@ -256,7 +255,7 @@ async function handleTest() {
     testStatus.value = 'failed'
     testMessage.value = e.message || t('dialog.test_failed')
   }
-  // 5 绉掑悗鑷姩娓呴櫎
+  // Auto-clear test status after 5s
   setTimeout(() => {
     testStatus.value = ''
     testMessage.value = ''
@@ -409,7 +408,11 @@ async function confirmDelete() {
   padding: 5px 12px;
 }
 
-/* 娴嬭瘯杩炴帴鎸夐挳 */
+.footer-spacer {
+  flex: 1;
+}
+
+/* Test button */
 .btn-test {
   display: inline-flex;
   align-items: center;
@@ -434,7 +437,7 @@ async function confirmDelete() {
   cursor: not-allowed;
 }
 
-/* 娴嬭瘯缁撴灉寰界珷 */
+/* Test result badge */
 .test-badge {
   display: inline-flex;
   align-items: center;
@@ -467,7 +470,7 @@ async function confirmDelete() {
   white-space: nowrap;
 }
 
-/* 鏃嬭浆鍔ㄧ敾 */
+/* Spin animation */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -476,7 +479,7 @@ async function confirmDelete() {
   animation: spin 1s linear infinite;
 }
 
-/* fade 杩囨浮 */
+/* Fade transition */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;
@@ -559,6 +562,10 @@ async function confirmDelete() {
     gap: 8px;
   }
 
+  .footer-spacer {
+    display: none;
+  }
+
   .dialog-footer .btn {
     height: 40px;
     font-size: 15px;
@@ -577,10 +584,9 @@ async function confirmDelete() {
     flex: 1 1 100%;
   }
 
-  .btn-cancel,
   .btn-save,
   .btn-delete {
-    flex: 1 1 calc(50% - 4px);
+    flex: 1;
   }
 
   .btn-save {

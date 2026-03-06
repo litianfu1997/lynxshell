@@ -422,4 +422,22 @@ onUnmounted(() => {
   opacity: 0;
   transform: translateY(-4px);
 }
+
+/* ===== Mobile Optimizations ===== */
+@media (max-width: 768px) {
+  .sftp-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 8px;
+    /* Hide scrollbar for a cleaner look */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .sftp-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+  .tool-btn span {
+    display: none;
+  }
+}
 </style>

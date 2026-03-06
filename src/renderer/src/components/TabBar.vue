@@ -350,4 +350,29 @@ function cancelRename() {
   opacity: 0;
   transform: scale(0.95);
 }
+
+/* ===== Mobile Optimizations ===== */
+@media (max-width: 768px) {
+  .tabbar {
+    height: 48px;
+  }
+  .tab {
+    min-width: 120px;
+    padding: 0 12px 0 16px;
+    gap: 12px;
+  }
+  .tab-name {
+    font-size: 14px;
+  }
+  .tab-close {
+    width: 32px;
+    height: 32px;
+    opacity: 1; /* Always show close button on touch devices */
+  }
+  .ctx-item {
+    padding: 12px 16px;
+    font-size: 14px;
+    min-height: 44px;
+  }
+}
 </style>

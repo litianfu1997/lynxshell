@@ -1,5 +1,6 @@
 <script setup>
 import { sftpAPI, dialogAPI } from '@/api/tauri-bridge'
+import { platform } from '@tauri-apps/plugin-os'
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import SftpToolbar from './SftpToolbar.vue'
@@ -42,6 +43,7 @@ const editingFile = ref(null)
 const toast = ref(null)  // { message, type: 'success'|'error' }
 const showDeleteConfirm = ref(false)
 const pendingDeleteFiles = ref([])
+const isMobilePlatform = ref(false)
 let toastTimer = null
 let unlistenUploadProgress = null   // Tauri 事件取消订阅函数
 let unlistenDownloadProgress = null // Tauri 事件取消订阅函数
@@ -412,7 +414,10 @@ const loadInitialData = async () => {
 }
 
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
+  const p = await platform()
+  isMobilePlatform.value = p === 'android' || p === 'ios'
+
   loadBookmarks()
   loadInitialData()
 
@@ -479,6 +484,7 @@ onUnmounted(() => {
 
     <div class="sftp-main">
       <SftpTree
+        v-if="!isMobilePlatform"
         :tree-data="treeData"
         :current-path="currentPath"
         :loading="isTreeLoading"

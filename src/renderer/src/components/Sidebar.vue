@@ -430,4 +430,58 @@ function showContextMenu(event, host) {
   background: var(--color-bg-3);
   color: var(--color-text-2);
 }
+
+/* ===== Mobile Optimizations ===== */
+@media (max-width: 768px) {
+  .sidebar-header {
+    padding: 12px;
+    gap: 12px;
+  }
+  .search-input {
+    padding: 10px 12px 10px 32px;
+    font-size: 14px;
+  }
+  .search-icon {
+    width: 18px;
+    height: 18px;
+    left: 10px;
+  }
+  .btn-icon {
+    width: 44px;
+    height: 44px;
+  }
+  .group-header {
+    padding: 12px 16px;
+    min-height: 44px;
+  }
+  .group-name {
+    font-size: 13px;
+  }
+  .host-item {
+    padding: 12px 12px 12px 24px;
+    min-height: 56px;
+    gap: 12px;
+  }
+  .host-name {
+    font-size: 15px;
+  }
+  .host-addr {
+    font-size: 12px;
+  }
+  .host-actions {
+    opacity: 1; /* Always show actions on touch devices */
+  }
+  .btn-icon-sm {
+    width: 36px;
+    height: 36px;
+  }
+  .sidebar-footer {
+    padding: 12px;
+  }
+  .footer-btn {
+    padding: 12px;
+    font-size: 14px;
+    min-height: 48px;
+  }
+}
 </style>

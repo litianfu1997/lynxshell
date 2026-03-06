@@ -1,30 +1,39 @@
 <template>
   <div class="app-layout" :class="{ 'mobile-platform': isMobilePlatform }">
     <!-- 自定义标题栏 -->
-    <TitleBar @open-settings="showSettingsDialog = true" @toggle-sidebar="mobileSidebarOpen = !mobileSidebarOpen" />
+    <TitleBar 
+      :show-menu-btn="!isMobilePlatform || !!activeSessionId"
+      @open-settings="showSettingsDialog = true" 
+      @toggle-sidebar="mobileSidebarOpen = !mobileSidebarOpen" 
+    />
 
     <div class="app-body">
       <!-- 左侧边栏：主机列表 -->
       <div 
+        v-if="!isMobilePlatform || (isMobilePlatform && activeSessionId)"
         class="mobile-sidebar-overlay" 
         :class="{ show: mobileSidebarOpen }" 
         @click="mobileSidebarOpen = false"
       ></div>
       <Sidebar
+        v-show="!isMobilePlatform || !activeSessionId || mobileSidebarOpen"
         class="adaptive-sidebar"
-        :class="{ 'mobile-open': mobileSidebarOpen }"
+        :class="{ 
+          'mobile-drawer': isMobilePlatform && activeSessionId,
+          'mobile-open': mobileSidebarOpen, 
+          'mobile-full': isMobilePlatform && !activeSessionId 
+        }"
         :hosts="hosts"
         :active-session-id="activeSessionId"
         :sessions="sessions"
         :ping-statuses="pingStatuses"
-        @connect="handleConnect; mobileSidebarOpen = false"
-        @open-sftp="createSftpTab; mobileSidebarOpen = false"
+        @connect="handleConnect($event); mobileSidebarOpen = false"
+        @open-sftp="createSftpTab($event); mobileSidebarOpen = false"
         @manage-host="openHostDialog"
         @refresh="loadHosts"
       />
-
       <!-- 右侧主内容区：标签页 + 终端 -->
-      <div class="main-area">
+      <div class="main-area" v-show="!isMobilePlatform || activeSessionId">
         <!-- 空状态 -->
         <WelcomeScreen
           v-if="sessions.length === 0"
@@ -233,17 +242,13 @@ function renameSession({ id, name }) {
   if (session) session.hostName = name
 }
 
-let statusInterval = null
-
 onMounted(async () => {
   const p = await platform()
   isMobilePlatform.value = p === 'android' || p === 'ios'
   loadHosts()
-  statusInterval = setInterval(checkAllHosts, 30000)
 })
 
 onUnmounted(() => {
-  if (statusInterval) clearInterval(statusInterval)
 })
 </script>
 
@@ -257,7 +262,7 @@ onUnmounted(() => {
 }
 
 .app-layout.mobile-platform {
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: calc(env(safe-area-inset-bottom) + var(--keyboard-inset, 0px));
 }
 
 .app-body {
@@ -285,7 +290,7 @@ onUnmounted(() => {
   display: none;
 }
 
-.app-layout.mobile-platform .adaptive-sidebar {
+.app-layout.mobile-platform .adaptive-sidebar.mobile-drawer {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -295,10 +300,11 @@ onUnmounted(() => {
   box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
   transform: translateX(-100%);
   transition: transform 0.3s ease;
+  will-change: transform;
   height: 100%;
 }
 
-.app-layout.mobile-platform .adaptive-sidebar.mobile-open {
+.app-layout.mobile-platform .adaptive-sidebar.mobile-drawer.mobile-open {
   transform: translateX(0);
 }
 
@@ -318,6 +324,14 @@ onUnmounted(() => {
   pointer-events: auto;
 }
 
+.app-layout.mobile-platform .adaptive-sidebar.mobile-full {
+  position: static;
+  width: 100%;
+  transform: none;
+  box-shadow: none;
+  flex: 1;
+}
+
 @media (max-width: 768px) {
   .adaptive-sidebar {
     position: absolute;
@@ -327,6 +341,7 @@ onUnmounted(() => {
     z-index: 100;
     transform: translateX(-100%);
     transition: transform 0.3s ease;
+    will-change: transform;
     height: 100%;
   }
 

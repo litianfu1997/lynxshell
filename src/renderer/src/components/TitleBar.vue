@@ -1,6 +1,6 @@
 <template>
   <div class="titlebar" :class="{ mobile: isMobilePlatform }" @dblclick="handleTitleBarDoubleClick">
-    <button class="mobile-menu-btn" @click="$emit('toggle-sidebar')">
+    <button class="mobile-menu-btn" v-if="showMenuBtn" @click="$emit('toggle-sidebar')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <line x1="3" y1="12" x2="21" y2="12"></line>
         <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -73,6 +73,10 @@ import { windowAPI } from '@/api/tauri-bridge'
 import { platform } from '@tauri-apps/plugin-os'
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+
+const props = defineProps({
+  showMenuBtn: { type: Boolean, default: true }
+})
 
 const { locale } = useI18n()
 const isDark = ref(true)

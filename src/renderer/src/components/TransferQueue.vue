@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 const props = defineProps({
   transfers: {
@@ -10,7 +10,13 @@ const props = defineProps({
 
 const emit = defineEmits(['cancel', 'pause', 'resume'])
 
-const expanded = ref(true)
+const expanded = ref(false)
+
+watch(() => props.transfers.length, (newVal, oldVal) => {
+  if (newVal > (oldVal || 0) && !expanded.value) {
+    expanded.value = true
+  }
+})
 
 const toggleExpand = () => {
   expanded.value = !expanded.value

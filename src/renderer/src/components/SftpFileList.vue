@@ -287,6 +287,27 @@ const formatDate = (timestamp) => {
   color: var(--text-secondary, #6b7280);
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== Mobile Optimizations ===== */
+@media (max-width: 768px) {
+  .file-header {
+    grid-template-columns: 36px 1fr 60px;
+    padding: 12px;
+    font-size: 13px;
+  }
+  .file-item {
+    grid-template-columns: 36px 1fr 60px;
+    padding: 12px;
+    font-size: 14px;
+    min-height: 48px;
+  }
+  .col-date {
+    display: none;
+  }
+  .col-size {
+    font-size: 12px;
+  }
+}
 </style>
 
 <!-- Right-click menu is teleported to body, so not scoped -->
@@ -332,5 +353,13 @@ const formatDate = (timestamp) => {
   height: 1px;
   background: var(--color-border, #2a3347);
   margin: 4px 0;
+}
+
+@media (max-width: 768px) {
+  .ctx-item {
+    padding: 12px 16px;
+    font-size: 14px;
+    min-height: 48px;
+  }
 }
 </style>
