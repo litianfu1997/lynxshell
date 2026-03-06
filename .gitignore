@@ -38,12 +38,4 @@ out/*
 # ===== Local tooling artifacts =====
 .claude/
 src-tauri/gen/
-!src-tauri/gen/android/
-!src-tauri/gen/android/app/
-!src-tauri/gen/android/app/src/
-!src-tauri/gen/android/app/src/main/
-!src-tauri/gen/android/app/src/main/AndroidManifest.xml
-!src-tauri/gen/android/app/src/main/res/
-!src-tauri/gen/android/app/src/main/res/values/
-!src-tauri/gen/android/app/src/main/res/values/strings.xml
 nul
