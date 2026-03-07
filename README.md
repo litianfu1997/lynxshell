@@ -6,7 +6,7 @@
 
 **A lightweight, clean & modern SSH client built with Tauri v2 + Vue 3 + Rust**
 
-Current release: **v0.3.12**
+Current release: **v0.3.18**
 
 Android and desktop now use the same app name: **LynxShell**.
 

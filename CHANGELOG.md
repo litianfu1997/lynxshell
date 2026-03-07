@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.18] - 2026-03-07
+
+### Maintenance
+- Synchronized the app version metadata across the Node, Tauri, and Cargo manifests for the new release.
+
+### Docs
+- Updated `README.md` to reflect the current `v0.3.18` release.
+
 ## [v0.3.12] - 2026-03-06
 
 ### Features
